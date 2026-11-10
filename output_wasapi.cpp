@@ -141,6 +141,13 @@ public:
         LeaveCriticalSection(&m_lock);
         return n;
     }
+	
+	bool is_progressing() override {
+        EnterCriticalSection(&m_lock);
+        bool progressing = m_client && m_started && !m_paused;
+        LeaveCriticalSection(&m_lock);
+        return progressing;
+    }
 
     void on_update() {}
 

@@ -1,4 +1,5 @@
 #include <foobar2000/helpers/foobar2000+atl.h>
+#include <foobar2000/SDK/coreDarkMode.h>
 #include <libPPUI/CDialogResizeHelper.h>
 #include "config.h"
 #include "resource.h"
@@ -49,7 +50,7 @@ public:
 
     // preferences_page_instance
     t_uint32 get_state() override {
-        t_uint32 s = preferences_state::resettable;
+        t_uint32 s = preferences_state::resettable | preferences_state::dark_mode_supported;
         if (!(read_ui() == from_cfg())) s |= preferences_state::changed;
         return s;
     }
@@ -71,6 +72,8 @@ public:
     END_MSG_MAP()
 
 private:
+    fb2k::CCoreDarkModeHooks m_dark;
+
     BOOL OnInitDialog(CWindow, LPARAM) {
         CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).SetRange(kBufferMin / kBufStepX100, kBufferMax / kBufStepX100);
         CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).SetRange(kRingMin / kRingStepX100, kRingMax / kRingStepX100);
@@ -79,71 +82,83 @@ private:
         CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).SetTicFreq(100);
         CTrackBarCtrl(GetDlgItem(IDC_SLD_START)).SetTicFreq(100);
         write_ui(from_cfg());
+        m_dark.AddDialogWithControls(*this);
         return TRUE;
     }
 
-    void OnClicked(UINT, int id, CWindow) {
-        if (id == IDC_BTN_DEFAULTS) write_ui(defaults());
-        m_cb->on_state_changed();
-    }
+	void OnClicked(UINT, int id, CWindow) {
+		if (id == IDC_BTN_DEFAULTS) write_ui(defaults());
+		else if (id == IDC_MODE_SHARED || id == IDC_MODE_EXCLUSIVE) update_app_volume_control();
+		m_cb->on_state_changed();
+	}
 
-    void OnHScroll(UINT, UINT, CTrackBarCtrl) {
-        update_labels();
-        m_cb->on_state_changed();
-    }
+	void OnHScroll(UINT, UINT, CTrackBarCtrl) {
+		update_labels();
+		m_cb->on_state_changed();
+	}
 
-    // Keep start threshold <= ring size at apply time (ring buffer always holds the start amount).
-    Settings read_ui() {
-        Settings s;
-        s.mode        = IsDlgButtonChecked(IDC_MODE_EXCLUSIVE) ? mode_exclusive : mode_shared;
-        s.appVol      = IsDlgButtonChecked(IDC_CHK_APPVOLUME) ? 1 : 0;
-        s.gapless     = IsDlgButtonChecked(IDC_CHK_GAPLESS) ? 1 : 0;
-        s.idle        = IsDlgButtonChecked(IDC_CHK_AUTODISCONNECT) ? 1 : 0;
-        s.mono        = IsDlgButtonChecked(IDC_CHK_MONO2STEREO) ? 1 : 0;
-        s.check       = IsDlgButtonChecked(IDC_CHK_CHECKFORMAT) ? 1 : 0;
-        s.clockWasapi = IsDlgButtonChecked(IDC_CHK_WASAPICLOCK) ? 1 : 0;
-        s.as24        = IsDlgButtonChecked(IDC_CHK_16AS24) ? 1 : 0;
-        s.periodMin   = IsDlgButtonChecked(IDC_PERIOD_MIN) ? 1 : 0;
-        s.buf   = CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).GetPos() * kBufStepX100;
-        s.ring  = CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).GetPos() * kRingStepX100;
-        s.start = CTrackBarCtrl(GetDlgItem(IDC_SLD_START)).GetPos() * kRingStepX100;
-        return s;
-    }
+	// Keep start threshold <= ring size at apply time (ring buffer always holds the start amount).
+	Settings read_ui() {
+		Settings s;
+		s.mode = IsDlgButtonChecked(IDC_MODE_EXCLUSIVE) ? mode_exclusive : mode_shared;
+		s.appVol = s.mode == mode_exclusive || IsDlgButtonChecked(IDC_CHK_APPVOLUME) ? 1 : 0;
+		s.gapless = IsDlgButtonChecked(IDC_CHK_GAPLESS) ? 1 : 0;
+		s.idle = IsDlgButtonChecked(IDC_CHK_AUTODISCONNECT) ? 1 : 0;
+		s.mono = IsDlgButtonChecked(IDC_CHK_MONO2STEREO) ? 1 : 0;
+		s.check = IsDlgButtonChecked(IDC_CHK_CHECKFORMAT) ? 1 : 0;
+		s.clockWasapi = IsDlgButtonChecked(IDC_CHK_WASAPICLOCK) ? 1 : 0;
+		s.as24 = IsDlgButtonChecked(IDC_CHK_16AS24) ? 1 : 0;
+		s.periodMin = IsDlgButtonChecked(IDC_PERIOD_MIN) ? 1 : 0;
+		s.buf = CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).GetPos() * kBufStepX100;
+		s.ring = CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).GetPos() * kRingStepX100;
+		s.start = CTrackBarCtrl(GetDlgItem(IDC_SLD_START)).GetPos() * kRingStepX100;
+		return s;
+	}
 
-    void write_ui(const Settings& s) {
-        CheckRadioButton(IDC_MODE_SHARED, IDC_MODE_EXCLUSIVE, s.mode == mode_exclusive ? IDC_MODE_EXCLUSIVE : IDC_MODE_SHARED);
-        CheckDlgButton(IDC_CHK_APPVOLUME, s.appVol);
-        CheckDlgButton(IDC_CHK_GAPLESS, s.gapless);
-        CheckDlgButton(IDC_CHK_AUTODISCONNECT, s.idle);
-        CheckDlgButton(IDC_CHK_MONO2STEREO, s.mono);
-        CheckDlgButton(IDC_CHK_CHECKFORMAT, s.check);
-        CheckDlgButton(IDC_CHK_WASAPICLOCK, s.clockWasapi);
-        CheckDlgButton(IDC_CHK_16AS24, s.as24);
-        CheckRadioButton(IDC_PERIOD_DEFAULT, IDC_PERIOD_MIN, s.periodMin ? IDC_PERIOD_MIN : IDC_PERIOD_DEFAULT);
-        CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).SetPos(s.buf / kBufStepX100);
-        CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).SetPos(s.ring / kRingStepX100);
-        CTrackBarCtrl(GetDlgItem(IDC_SLD_START)).SetPos(s.start / kRingStepX100);
-        update_labels();
-    }
+	void write_ui(const Settings& s) {
+		CheckRadioButton(IDC_MODE_SHARED, IDC_MODE_EXCLUSIVE, s.mode == mode_exclusive ? IDC_MODE_EXCLUSIVE : IDC_MODE_SHARED);
+		CheckDlgButton(IDC_CHK_APPVOLUME, s.appVol);
+		update_app_volume_control();
+		CheckDlgButton(IDC_CHK_GAPLESS, s.gapless);
+		CheckDlgButton(IDC_CHK_AUTODISCONNECT, s.idle);
+		CheckDlgButton(IDC_CHK_MONO2STEREO, s.mono);
+		CheckDlgButton(IDC_CHK_CHECKFORMAT, s.check);
+		CheckDlgButton(IDC_CHK_WASAPICLOCK, s.clockWasapi);
+		CheckDlgButton(IDC_CHK_16AS24, s.as24);
+		CheckRadioButton(IDC_PERIOD_DEFAULT, IDC_PERIOD_MIN, s.periodMin ? IDC_PERIOD_MIN : IDC_PERIOD_DEFAULT);
+		CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).SetPos(s.buf / kBufStepX100);
+		CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).SetPos(s.ring / kRingStepX100);
+		CTrackBarCtrl(GetDlgItem(IDC_SLD_START)).SetPos(s.start / kRingStepX100);
+		update_labels();
+	}
 
-    void update_labels() {
-        Settings s = read_ui();
-        pfc::string_formatter f;
-        uSetDlgItemText(*this, IDC_LBL_BUFFER, (f << pfc::format_float(s.buf / 100.0, 0, 1)).c_str());
-        f.reset();
-        uSetDlgItemText(*this, IDC_LBL_RING, (f << pfc::format_float(s.ring / 100.0, 0, 2)).c_str());
-        f.reset();
-        uSetDlgItemText(*this, IDC_LBL_START, (f << pfc::format_float(s.start / 100.0, 0, 2)).c_str());
-    }
+	void update_app_volume_control() {
+		bool exclusive = IsDlgButtonChecked(IDC_MODE_EXCLUSIVE) != 0;
+		if (exclusive) CheckDlgButton(IDC_CHK_APPVOLUME, BST_CHECKED);
+		GetDlgItem(IDC_CHK_APPVOLUME).EnableWindow(!exclusive);
+	}
 
-    const preferences_page_callback::ptr m_cb;
+	void update_labels() {
+		Settings s = read_ui();
+		pfc::string_formatter f;
+		uSetDlgItemText(*this, IDC_LBL_BUFFER, (f << pfc::format_float(s.buf / 100.0, 0, 1)).c_str());
+		f.reset();
+		uSetDlgItemText(*this, IDC_LBL_RING, (f << pfc::format_float(s.ring / 100.0, 0, 2)).c_str());
+		f.reset();
+		uSetDlgItemText(*this, IDC_LBL_START, (f << pfc::format_float(s.start / 100.0, 0, 2)).c_str());
+	}
 };
 
-class preferences_page_wasapi : public preferences_page_impl<CWasapiPrefs> {
+class preferences_page_wasapi : public preferences_page_v3 {
 public:
-    const char* get_name() { return "WASAPI"; }
-    GUID get_guid() { return guid_prefs_page; }
-    GUID get_parent_guid() { return guid_output; } // Playback > Output
+	preferences_page_instance::ptr instantiate(HWND parent, preferences_page_callback::ptr callback) override {
+		auto p = fb2k::service_new<CWasapiPrefs>(callback);
+		p->Create(parent);
+		return p;
+	}
+	const char* get_name() override { return "WASAPI (custom)"; }
+	GUID get_guid() override { return guid_prefs_page; }
+	GUID get_parent_guid() override { return guid_output; } // Playback > Output (use guid_playback if undeclared)
 };
 
 preferences_page_factory_t<preferences_page_wasapi> g_prefs_factory;
