@@ -55,6 +55,11 @@ inline constexpr TipEntry kTooltips[] = {
       L"one steady rate, which avoids Windows' own resampling in shared mode and rate switching in exclusive "
       L"mode. If the rate cannot be read, audio is left unchanged. Takes effect the next time playback starts." },
 
+    { IDC_CHK_SUPPRESSDIAG,
+      L"Hides error popups for minor, non-critical problems (for example a buffer query failing as a stream "
+      L"ends abruptly). Playback just stops quietly and the details are written to the foobar2000 console. "
+      L"Serious errors, such as being unable to initialize the device, are always shown." },
+
     // ---- Device period ----
     { IDC_PERIOD_DEFAULT,
       L"Uses the device's default period: how often the device asks for more audio. A safe choice "

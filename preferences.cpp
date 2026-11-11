@@ -45,6 +45,7 @@ Settings defaults() {
         0,           // Device period (1 = minimum)
         kBufferDef, kRingDef, kStartDef,
         0,           // Automatically match device's configured sample rate
+        0 };         // Suppress non-critical (diagnostic) error messages
 }
 
 class CWasapiPrefs : public CDialogImpl<CWasapiPrefs>, public preferences_page_instance {
@@ -211,6 +212,7 @@ private:
         s.clockWasapi = IsDlgButtonChecked(IDC_CHK_WASAPICLOCK) ? 1 : 0;
         s.as24        = IsDlgButtonChecked(IDC_CHK_16AS24) ? 1 : 0;
         s.matchRate   = IsDlgButtonChecked(IDC_CHK_MATCHRATE) ? 1 : 0;
+        s.suppressDiag = IsDlgButtonChecked(IDC_CHK_SUPPRESSDIAG) ? 1 : 0;
         s.periodMin   = IsDlgButtonChecked(IDC_PERIOD_MIN) ? 1 : 0;
         s.buf   = CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).GetPos() * kBufStepX100;
         s.ring  = CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).GetPos() * kRingStepX100;
@@ -228,6 +230,7 @@ private:
         CheckDlgButton(IDC_CHK_WASAPICLOCK, s.clockWasapi);
         CheckDlgButton(IDC_CHK_16AS24, s.as24);
         CheckDlgButton(IDC_CHK_MATCHRATE, s.matchRate);
+        CheckDlgButton(IDC_CHK_SUPPRESSDIAG, s.suppressDiag);
         CheckRadioButton(IDC_PERIOD_DEFAULT, IDC_PERIOD_MIN, s.periodMin ? IDC_PERIOD_MIN : IDC_PERIOD_DEFAULT);
         CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).SetPos(s.buf / kBufStepX100);
         CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).SetPos(s.ring / kRingStepX100);

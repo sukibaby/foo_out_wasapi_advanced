@@ -73,6 +73,11 @@ static unsigned query_device_mix_rate(const GUID& deviceGuid) {
     return (rate >= 8000 && rate <= 768000) ? rate : 0;
 }
 
+// Errors that are always shown versus errors that may be hidden by "Suppress diagnostic error messages".
+//  Fatal      - the device could not be set up at all (not found, cannot activate, Initialize failed, ...).
+//  Diagnostic - a secondary failure while finishing setup (buffer size / event / render client queries).
+enum class ErrorLevel { Fatal, Diagnostic };
+
 struct SampleFmt { int container; int valid; bool isFloat; };
 
 class output_wasapi : public output_impl {
@@ -148,9 +153,20 @@ public:
         m_exclusive = (cfg_mode == mode_exclusive);
         bool ok = init_client();
         LeaveCriticalSection(&m_lock);
-        if (!ok) throw exception_io_data(m_lastError.c_str());
+        if (!ok) throw_open_failure();
 
         m_thread = CreateThread(nullptr, 0, &output_wasapi::thread_proc, this, 0, nullptr);
+    }
+
+    // Fatal errors are always reported to the user. Diagnostic-level errors can be hidden with the
+    // "Suppress diagnostic error messages" option: exception_output_interrupted is the SDK's
+    // "do not complain to user" exception, and the details go to the foobar2000 console instead.
+    [[noreturn]] void throw_open_failure() {
+        if (m_lastErrorLevel == ErrorLevel::Diagnostic && cfg_suppress_diag) {
+            FB2K_console_formatter() << "WASAPI: " << m_lastError.c_str() << " (error popup suppressed)";
+            throw exception_output_interrupted();
+        }
+        throw exception_io_data(m_lastError.c_str());
     }
 
     // Lets foobar2000 resample to the rate configured for this device in Windows. A nonzero return makes the
@@ -275,27 +291,20 @@ private:
 
     // ---------- device / client setup (call with lock held) ----------
     bool activate_device() {
-        m_dev.Release();
-        CComPtr<IMMDeviceEnumerator> en;
-        if (FAILED(en.CoCreateInstance(__uuidof(MMDeviceEnumerator)))) { m_lastError = "Cannot create device enumerator"; return false; }
-        if (m_deviceGuid == guid_default_device || m_deviceGuid == pfc::guid_null) {
-            if (FAILED(en->GetDefaultAudioEndpoint(eRender, eConsole, &m_dev))) { m_lastError = "No default render device"; return false; }
-            return true;
-        }
-        CComPtr<IMMDeviceCollection> col;
-        if (FAILED(en->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &col))) { m_lastError = "Cannot enumerate devices"; return false; }
-        UINT n = 0; col->GetCount(&n);
-        for (UINT i = 0; i < n; ++i) {
-            CComPtr<IMMDevice> d;
-            if (FAILED(col->Item(i, &d))) continue;
-            LPWSTR id = nullptr;
-            if (FAILED(d->GetId(&id))) continue;
-            bool match = (endpoint_guid(id) == m_deviceGuid);
-            CoTaskMemFree(id);
-            if (match) { m_dev = d; return true; }
-        }
-        m_lastError = "Selected WASAPI device not found";
+        if (const char* err = find_endpoint(m_deviceGuid, m_dev)) return fail(ErrorLevel::Fatal, err);
+        return true;
+    }
+
+    // Records why opening failed; always returns false so callers can "return fail(...)".
+    bool fail(ErrorLevel level, const char* msg) {
+        m_lastError = msg;
+        m_lastErrorLevel = level;
         return false;
+    }
+    bool fail_hr(ErrorLevel level, const char* what, HRESULT hr) {
+        char msg[128];
+        snprintf(msg, sizeof(msg), "%s (0x%08X)", what, (unsigned)hr);
+        return fail(level, msg);
     }
 
     std::vector<SampleFmt> candidate_formats() const {
@@ -336,7 +345,7 @@ private:
         for (const SampleFmt& f : candidate_formats()) {
             if (try_init_with(f)) return true;
         }
-        if (m_lastError.is_empty()) m_lastError = "Unable to initialize WASAPI with any supported format";
+        if (m_lastError.is_empty()) fail(ErrorLevel::Fatal, "Unable to initialize WASAPI with any supported format");
         return false;
     }
 
@@ -345,7 +354,7 @@ private:
             if (!activate_device()) return false;
             m_client.Release();
             if (FAILED(m_dev->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&m_client))) {
-                m_lastError = "Cannot activate IAudioClient"; return false;
+                return fail(ErrorLevel::Fatal, "Cannot activate IAudioClient");
             }
             WAVEFORMATEXTENSIBLE wf = make_format(f);
             AUDCLNT_SHAREMODE sm = m_exclusive ? AUDCLNT_SHAREMODE_EXCLUSIVE : AUDCLNT_SHAREMODE_SHARED;
@@ -356,9 +365,8 @@ private:
                 if (closest) CoTaskMemFree(closest);
                 // In shared mode we ask for auto-conversion, so S_FALSE is acceptable.
                 if (hr != S_OK && !(!m_exclusive && hr == S_FALSE)) {
-                    m_lastError = "Format not supported (IsFormatSupported)";
                     m_client.Release();
-                    return false;
+                    return fail(ErrorLevel::Fatal, "Format not supported (IsFormatSupported)");
                 }
             }
 
@@ -379,20 +387,21 @@ private:
                 continue; // re-activate and retry with the aligned duration
             }
             if (FAILED(hr)) {
-                char msg[96];
-                snprintf(msg, sizeof(msg), "IAudioClient::Initialize failed (0x%08X)", (unsigned)hr);
-                m_lastError = msg;
                 m_client.Release();
-                return false;
+                return fail_hr(ErrorLevel::Fatal, "IAudioClient::Initialize failed", hr);
             }
             m_fmt = f;
             m_alignedDuration = 0;
             break;
         }
 
-        if (FAILED(m_client->SetEventHandle(m_bufEvent))) { m_lastError = "SetEventHandle failed"; m_client.Release(); return false; }
-        if (FAILED(m_client->GetBufferSize(&m_bufFrames))) { m_lastError = "GetBufferSize failed"; m_client.Release(); return false; }
-        if (FAILED(m_client->GetService(__uuidof(IAudioRenderClient), (void**)&m_render))) { m_lastError = "No render client"; m_client.Release(); return false; }
+        // The device itself initialized; failures from here on are secondary (diagnostic level).
+        HRESULT hr2 = m_client->SetEventHandle(m_bufEvent);
+        if (FAILED(hr2)) { m_client.Release(); return fail_hr(ErrorLevel::Diagnostic, "SetEventHandle failed", hr2); }
+        hr2 = m_client->GetBufferSize(&m_bufFrames);
+        if (FAILED(hr2)) { m_client.Release(); return fail_hr(ErrorLevel::Diagnostic, "GetBufferSize failed", hr2); }
+        hr2 = m_client->GetService(__uuidof(IAudioRenderClient), (void**)&m_render);
+        if (FAILED(hr2)) { m_client.Release(); return fail_hr(ErrorLevel::Diagnostic, "No render client", hr2); }
         m_client->GetService(__uuidof(IAudioClock), (void**)&m_clock);
         if (m_clock) m_clock->GetFrequency(&m_clockFreq);
         if (!m_exclusive && app_volume_enabled()) {
@@ -414,6 +423,7 @@ private:
         m_sysAccum = 0;
         m_started = false;
         m_lastError.reset();
+        m_lastErrorLevel = ErrorLevel::Fatal;
         return true;
     }
 
