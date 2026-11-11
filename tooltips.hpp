@@ -54,13 +54,20 @@ inline constexpr TipEntry kTooltips[] = {
     {IDC_PERIOD_MIN, L"Low latency mode. Uses more CPU. Can cause crackling or dropouts on some systems."},
 
     // ---- Buffers ----
-    {IDC_SLD_BUFFER, L"Size of the device buffer, as a multiple of the device period. Larger values tolerate hiccups "
-                     L"better but add delay; smaller values lower the delay. Default: 7.0"},
+    {IDC_SLD_BUFFER, L"The WASAPI device buffer: the small buffer that Windows or your sound device reads from, measured in "
+                     L"multiples of the device period (about 10 ms by default, so 7.0 is roughly 70 ms). This is NOT the "
+                     L"same as the Buffer size on foobar2000's main Playback > Output page (1000 ms by default), which is a "
+                     L"much larger amount of audio queued ahead of time. Smaller values reduce the delay between foobar2000 "
+                     L"and your speakers but are more likely to crackle if the PC is busy; larger values are safer but add delay. "},
 
-    {IDC_SLD_RING, L"Size of foobar2000's own queue in front of the device buffer, as a multiple of the device buffer. "
-                   L"Larger values smooth over slow moments in the player. Default: 5.00"},
+    {IDC_SLD_RING, L"How much audio this output queues ahead of the device buffer, measured in multiples of the device buffer "
+                   L"set above. It does the job of the Buffer size on foobar2000's main Playback > Output page "
+                   L"(1000 ms by default): this output does not use that setting, and this slider takes its place. "
+                   L"With the defaults it holds roughly 350 ms of audio if the device period is 10 ms (5.00 x 70 ms). "
+                   L"Larger values protect against dropouts when foobar2000 or the PC is busy, but changes such as "
+                   L"DSP or equalizer settings take longer to be heard. Default: 5.00"},
 
     {IDC_SLD_START, L"How much audio must be queued, as a multiple of the device buffer, before playback starts. "
-                    L"Higher values start more safely but slightly later. Default: 1.00"},
+                    L"Higher values start more safely, but with more noticeable delay before playback begins. Default: 1.00"},
 
 };
