@@ -8,9 +8,13 @@
 
 using namespace wcfg;
 
-DECLARE_COMPONENT_VERSION("WASAPI advanced output", "1.1.0",
-                          "Configurable WASAPI output component featuring shared/exclusive modes, buffer tuning, & more. "
-                          "github.com/sukibaby/foo_out_wasapi_advanced");
+DECLARE_COMPONENT_VERSION(
+    "WASAPI advanced output",
+    "1.1.0",
+    "Configurable WASAPI output component featuring shared/exclusive modes,\n"
+    "buffer tuning, & more.\n\n"
+    "github.com/sukibaby/foo_out_wasapi_advanced\n\n"
+    "This component is released under the MIT License.");
 VALIDATE_COMPONENT_FILENAME("foo_out_wasapi_advanced.dll");
 
 // {a3f0c2d8-91b4-4e7a-b6d5-0f2c8e41a7b9}
