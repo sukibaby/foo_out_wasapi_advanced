@@ -1,34 +1,34 @@
 #pragma once
-#define IDD_WASAPI_PREFS        101
+#define IDD_WASAPI_PREFS 101
 
-#define IDC_MODE_SHARED         1001
-#define IDC_MODE_EXCLUSIVE      1002
+#define IDC_MODE_SHARED 1001
+#define IDC_MODE_EXCLUSIVE 1002
 
-#define IDC_CHK_APPVOLUME       1010
-#define IDC_CHK_GAPLESS         1011
-#define IDC_CHK_AUTODISCONNECT  1012
-#define IDC_CHK_MONO2STEREO     1013
-#define IDC_CHK_CHECKFORMAT     1014
-#define IDC_CHK_WASAPICLOCK     1015
-#define IDC_CHK_16AS24          1016
-#define IDC_CHK_SUPPRESSDIAG    1017
-#define IDC_CHK_MATCHRATE       1018
+#define IDC_CHK_APPVOLUME 1010
+#define IDC_CHK_GAPLESS 1011
+#define IDC_CHK_AUTODISCONNECT 1012
+#define IDC_CHK_MONO2STEREO 1013
+#define IDC_CHK_CHECKFORMAT 1014
+#define IDC_CHK_WASAPICLOCK 1015
+#define IDC_CHK_16AS24 1016
+#define IDC_CHK_SUPPRESSDIAG 1017
+#define IDC_CHK_MATCHRATE 1018
 
-#define IDC_PERIOD_DEFAULT      1020
-#define IDC_PERIOD_MIN          1021
+#define IDC_PERIOD_DEFAULT 1020
+#define IDC_PERIOD_MIN 1021
 
-#define IDC_SLD_BUFFER          1030
-#define IDC_LBL_BUFFER          1031
-#define IDC_SLD_RING            1032
-#define IDC_LBL_RING            1033
-#define IDC_SLD_START           1034
-#define IDC_LBL_START           1035
+#define IDC_SLD_BUFFER 1030
+#define IDC_LBL_BUFFER 1031
+#define IDC_SLD_RING 1032
+#define IDC_LBL_RING 1033
+#define IDC_SLD_START 1034
+#define IDC_LBL_START 1035
 
-#define IDC_GRP_MODE            1050
-#define IDC_GRP_OPTIONS         1051
-#define IDC_GRP_PERIOD          1052
-#define IDC_GRP_BUFFER          1053
+#define IDC_GRP_MODE 1050
+#define IDC_GRP_OPTIONS 1051
+#define IDC_GRP_PERIOD 1052
+#define IDC_GRP_BUFFER 1053
 
 #ifndef IDC_STATIC
-#define IDC_STATIC              -1
+#define IDC_STATIC -1
 #endif

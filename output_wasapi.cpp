@@ -16,58 +16,70 @@
 using namespace wcfg;
 
 // {7b2d9f64-3a0c-4c55-8e1a-52d1c9a7e0f3}
-static const GUID guid_output_wasapi = { 0x7b2d9f64, 0x3a0c, 0x4c55, { 0x8e, 0x1a, 0x52, 0xd1, 0xc9, 0xa7, 0xe0, 0xf3 } };
+static const GUID guid_output_wasapi = {0x7b2d9f64, 0x3a0c, 0x4c55, {0x8e, 0x1a, 0x52, 0xd1, 0xc9, 0xa7, 0xe0, 0xf3}};
 // {7b2d9f64-3a0c-4c55-8e1a-52d1c9a7e0f4}  -- "default device" entry
-static const GUID guid_default_device = { 0x7b2d9f64, 0x3a0c, 0x4c55, { 0x8e, 0x1a, 0x52, 0xd1, 0xc9, 0xa7, 0xe0, 0xf4 } };
+static const GUID guid_default_device = {0x7b2d9f64, 0x3a0c, 0x4c55, {0x8e, 0x1a, 0x52, 0xd1, 0xc9, 0xa7, 0xe0, 0xf4}};
 
-static const GUID kSubPCM   = { 0x00000001, 0x0000, 0x0010, { 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 } };
-static const GUID kSubFloat = { 0x00000003, 0x0000, 0x0010, { 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 } };
+static const GUID kSubPCM = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
+static const GUID kSubFloat = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 
-static pfc::string8 to_utf8(const wchar_t* w) {
+static pfc::string8 to_utf8(const wchar_t *w) {
     pfc::string8 out;
     out = pfc::stringcvt::string_utf8_from_wide(w).get_ptr();
     return out;
 }
 
-static GUID endpoint_guid(const wchar_t* id) {
+static GUID endpoint_guid(const wchar_t *id) {
     pfc::string8 u = to_utf8(id);
     return hasher_md5::get()->process_single_string(u).asGUID();
 }
 
 // Resolves the endpoint selected in foobar2000 (or the default one). Returns nullptr on success,
 // otherwise a short description of what failed.
-static const char* find_endpoint(const GUID& guid, CComPtr<IMMDevice>& out) {
+static const char *find_endpoint(const GUID &guid, CComPtr<IMMDevice> &out) {
     out.Release();
     CComPtr<IMMDeviceEnumerator> en;
-    if (FAILED(en.CoCreateInstance(__uuidof(MMDeviceEnumerator)))) return "Cannot create device enumerator";
+    if (FAILED(en.CoCreateInstance(__uuidof(MMDeviceEnumerator))))
+        return "Cannot create device enumerator";
     if (guid == guid_default_device || guid == pfc::guid_null) {
-        if (FAILED(en->GetDefaultAudioEndpoint(eRender, eConsole, &out))) return "No default render device";
+        if (FAILED(en->GetDefaultAudioEndpoint(eRender, eConsole, &out)))
+            return "No default render device";
         return nullptr;
     }
     CComPtr<IMMDeviceCollection> col;
-    if (FAILED(en->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &col))) return "Cannot enumerate devices";
-    UINT n = 0; col->GetCount(&n);
+    if (FAILED(en->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &col)))
+        return "Cannot enumerate devices";
+    UINT n = 0;
+    col->GetCount(&n);
     for (UINT i = 0; i < n; ++i) {
         CComPtr<IMMDevice> d;
-        if (FAILED(col->Item(i, &d))) continue;
+        if (FAILED(col->Item(i, &d)))
+            continue;
         LPWSTR id = nullptr;
-        if (FAILED(d->GetId(&id))) continue;
+        if (FAILED(d->GetId(&id)))
+            continue;
         const bool match = (endpoint_guid(id) == guid);
         CoTaskMemFree(id);
-        if (match) { out = d; return nullptr; }
+        if (match) {
+            out = d;
+            return nullptr;
+        }
     }
     return "Selected WASAPI device not found";
 }
 
 // The sample rate configured for the device in Windows (Sound > Properties > Advanced > Default Format),
 // which is the format of the shared-mode mix. Returns 0 if it cannot be determined.
-static unsigned query_device_mix_rate(const GUID& deviceGuid) {
+static unsigned query_device_mix_rate(const GUID &deviceGuid) {
     CComPtr<IMMDevice> dev;
-    if (find_endpoint(deviceGuid, dev)) return 0;
+    if (find_endpoint(deviceGuid, dev))
+        return 0;
     CComPtr<IAudioClient> client;
-    if (FAILED(dev->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&client))) return 0;
-    WAVEFORMATEX* mix = nullptr;
-    if (FAILED(client->GetMixFormat(&mix)) || !mix) return 0;
+    if (FAILED(dev->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void **)&client)))
+        return 0;
+    WAVEFORMATEX *mix = nullptr;
+    if (FAILED(client->GetMixFormat(&mix)) || !mix)
+        return 0;
     const unsigned rate = mix->nSamplesPerSec;
     CoTaskMemFree(mix);
     return (rate >= 8000 && rate <= 768000) ? rate : 0;
@@ -78,15 +90,19 @@ static unsigned query_device_mix_rate(const GUID& deviceGuid) {
 //  Diagnostic - a secondary failure while finishing setup (buffer size / event / render client queries).
 enum class ErrorLevel { Fatal, Diagnostic };
 
-struct SampleFmt { int container; int valid; bool isFloat; };
+struct SampleFmt {
+    int container;
+    int valid;
+    bool isFloat;
+};
 
 class output_wasapi : public output_impl {
-public:
-    output_wasapi(const GUID& device, double /*buffer_length*/, bool /*dither*/, t_uint32 bitdepth)
+  public:
+    output_wasapi(const GUID &device, double /*buffer_length*/, bool /*dither*/, t_uint32 bitdepth)
         : m_deviceGuid(device), m_bitdepth(bitdepth) {
         InitializeCriticalSection(&m_lock);
         m_stopEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-        m_bufEvent  = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+        m_bufEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
         QueryPerformanceFrequency(&m_qpcFreq);
     }
 
@@ -106,7 +122,7 @@ public:
 
     // ---- output_entry statics ----
     static GUID g_get_guid() { return guid_output_wasapi; }
-    static const char* g_get_name() { return "WASAPI"; }
+    static const char *g_get_name() { return "WASAPI"; }
     static bool g_advanced_settings_query() { return false; }
     static bool g_needs_bitdepth_config() { return true; }
     static bool g_needs_dither_config() { return false; }
@@ -114,23 +130,30 @@ public:
     static bool g_supports_multiple_streams() { return false; }
     static bool g_is_high_latency() { return false; }
 
-    static void g_enum_devices(output_device_enum_callback& cb) {
+    static void g_enum_devices(output_device_enum_callback &cb) {
         cb.on_device(guid_default_device, "Default Device", 14);
         CComPtr<IMMDeviceEnumerator> en;
-        if (FAILED(en.CoCreateInstance(__uuidof(MMDeviceEnumerator)))) return;
+        if (FAILED(en.CoCreateInstance(__uuidof(MMDeviceEnumerator))))
+            return;
         CComPtr<IMMDeviceCollection> col;
-        if (FAILED(en->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &col))) return;
-        UINT n = 0; col->GetCount(&n);
+        if (FAILED(en->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &col)))
+            return;
+        UINT n = 0;
+        col->GetCount(&n);
         for (UINT i = 0; i < n; ++i) {
             CComPtr<IMMDevice> dev;
-            if (FAILED(col->Item(i, &dev))) continue;
+            if (FAILED(col->Item(i, &dev)))
+                continue;
             LPWSTR id = nullptr;
-            if (FAILED(dev->GetId(&id))) continue;
+            if (FAILED(dev->GetId(&id)))
+                continue;
             GUID g = endpoint_guid(id);
             CoTaskMemFree(id);
             CComPtr<IPropertyStore> ps;
-            if (FAILED(dev->OpenPropertyStore(STGM_READ, &ps))) continue;
-            PROPVARIANT v; PropVariantInit(&v);
+            if (FAILED(dev->OpenPropertyStore(STGM_READ, &ps)))
+                continue;
+            PROPVARIANT v;
+            PropVariantInit(&v);
             if (SUCCEEDED(ps->GetValue(PKEY_Device_FriendlyName, &v)) && v.vt == VT_LPWSTR) {
                 pfc::string8 name = to_utf8(v.pwszVal);
                 cb.on_device(g, name.c_str(), (unsigned)name.length());
@@ -140,20 +163,23 @@ public:
     }
 
     // ---- output_impl ----
-    void open(audio_chunk::spec_t const& spec) {
+    void open(audio_chunk::spec_t const &spec) {
         EnterCriticalSection(&m_lock);
         m_rate = spec.sampleRate;
         m_srcCh = spec.chanCount;
         m_devCh = (m_srcCh == 1 && cfg_mono_to_stereo) ? 2 : m_srcCh;
         m_expandMono = (m_devCh != m_srcCh);
         uint32_t mask = spec.chanMask;
-        if (m_expandMono) mask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT;
-        else if (mask == 0) mask = audio_chunk::g_guess_channel_config(m_devCh);
+        if (m_expandMono)
+            mask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT;
+        else if (mask == 0)
+            mask = audio_chunk::g_guess_channel_config(m_devCh);
         m_mask = mask;
         m_exclusive = (cfg_mode == mode_exclusive);
         bool ok = init_client();
         LeaveCriticalSection(&m_lock);
-        if (!ok) throw_open_failure();
+        if (!ok)
+            throw_open_failure();
 
         m_thread = CreateThread(nullptr, 0, &output_wasapi::thread_proc, this, 0, nullptr);
     }
@@ -172,7 +198,8 @@ public:
     // Lets foobar2000 resample to the rate configured for this device in Windows. A nonzero return makes the
     // core inject its resampler in front of this output; zero leaves the stream at its own rate.
     unsigned get_forced_sample_rate() override {
-        if (!cfg_match_rate) return 0;
+        if (!cfg_match_rate)
+            return 0;
         if (!m_deviceRateQueried) {
             m_deviceRate = query_device_mix_rate(m_deviceGuid);
             m_deviceRateQueried = true;
@@ -184,17 +211,21 @@ public:
         return m_deviceRate;
     }
 
-    void write(const audio_chunk& chunk) {
+    void write(const audio_chunk &chunk) {
         EnterCriticalSection(&m_lock);
-        const audio_sample* in = chunk.get_data();
+        const audio_sample *in = chunk.get_data();
         size_t frames = chunk.get_sample_count();
         size_t space = m_ringFrames - m_ringCount;
-        if (frames > space) frames = space; // foobar normally respects can_write_samples()
+        if (frames > space)
+            frames = space; // foobar normally respects can_write_samples()
         for (size_t i = 0; i < frames; ++i) {
             size_t wr = (m_ringRead + m_ringCount) % m_ringFrames;
-            float* dst = &m_ring[wr * m_devCh];
-            if (m_expandMono) { dst[0] = dst[1] = (float)in[i]; }
-            else for (uint32_t c = 0; c < m_srcCh; ++c) dst[c] = (float)in[i * m_srcCh + c];
+            float *dst = &m_ring[wr * m_devCh];
+            if (m_expandMono) {
+                dst[0] = dst[1] = (float)in[i];
+            } else
+                for (uint32_t c = 0; c < m_srcCh; ++c)
+                    dst[c] = (float)in[i * m_srcCh + c];
             ++m_ringCount;
         }
         m_lastActivity = GetTickCount();
@@ -214,7 +245,8 @@ public:
         t_size n = m_ringCount;
         if (m_client && m_started) {
             uint64_t played = played_frames();
-            if (m_submitted > played) n += (t_size)(m_submitted - played);
+            if (m_submitted > played)
+                n += (t_size)(m_submitted - played);
         }
         LeaveCriticalSection(&m_lock);
         return n;
@@ -229,7 +261,12 @@ public:
             stop_client();
             m_pauseTick = GetTickCount();
         } else {
-            if (!m_client) { if (!init_client()) { LeaveCriticalSection(&m_lock); return; } }
+            if (!m_client) {
+                if (!init_client()) {
+                    LeaveCriticalSection(&m_lock);
+                    return;
+                }
+            }
             m_forceStart = true;
             try_start();
         }
@@ -270,7 +307,8 @@ public:
 
     void on_flush_changing_track() {
         // Gapless: keep already-queued audio so the next track follows seamlessly.
-        if (cfg_gapless) return;
+        if (cfg_gapless)
+            return;
         on_flush();
     }
 
@@ -278,30 +316,32 @@ public:
         EnterCriticalSection(&m_lock);
         if (app_volume_enabled()) {
             m_gain = (float)std::pow(10.0, dB / 20.0);
-            if (m_simpleVol) m_simpleVol->SetMasterVolume(m_gain, nullptr);
+            if (m_simpleVol)
+                m_simpleVol->SetMasterVolume(m_gain, nullptr);
         } else {
             m_gain = 1.0f;
         }
         LeaveCriticalSection(&m_lock);
     }
 
-private:
+  private:
     // Exclusive mode bypasses the Windows mixer, so app-side volume is always required there.
     bool app_volume_enabled() const { return m_exclusive || cfg_mode == mode_exclusive || cfg_app_volume; }
 
     // ---------- device / client setup (call with lock held) ----------
     bool activate_device() {
-        if (const char* err = find_endpoint(m_deviceGuid, m_dev)) return fail(ErrorLevel::Fatal, err);
+        if (const char *err = find_endpoint(m_deviceGuid, m_dev))
+            return fail(ErrorLevel::Fatal, err);
         return true;
     }
 
     // Records why opening failed; always returns false so callers can "return fail(...)".
-    bool fail(ErrorLevel level, const char* msg) {
+    bool fail(ErrorLevel level, const char *msg) {
         m_lastError = msg;
         m_lastErrorLevel = level;
         return false;
     }
-    bool fail_hr(ErrorLevel level, const char* what, HRESULT hr) {
+    bool fail_hr(ErrorLevel level, const char *what, HRESULT hr) {
         char msg[128];
         snprintf(msg, sizeof(msg), "%s (0x%08X)", what, (unsigned)hr);
         return fail(level, msg);
@@ -309,23 +349,41 @@ private:
 
     std::vector<SampleFmt> candidate_formats() const {
         std::vector<SampleFmt> v;
-        if (!m_exclusive) { v.push_back({ 4, 32, true }); return v; }
+        if (!m_exclusive) {
+            v.push_back({4, 32, true});
+            return v;
+        }
         int bd = (int)m_bitdepth;
-        if (bd != 16 && bd != 24 && bd != 32) bd = 24;
-        if (bd == 16 && cfg_16_as_24) bd = 24;
+        if (bd != 16 && bd != 24 && bd != 32)
+            bd = 24;
+        if (bd == 16 && cfg_16_as_24)
+            bd = 24;
         auto add = [&](SampleFmt f) {
-            for (auto& e : v) if (e.container == f.container && e.valid == f.valid && e.isFloat == f.isFloat) return;
+            for (auto &e : v)
+                if (e.container == f.container && e.valid == f.valid && e.isFloat == f.isFloat)
+                    return;
             v.push_back(f);
         };
-        if (bd == 16) add({ 2, 16, false });
-        if (bd == 24) { add({ 3, 24, false }); add({ 4, 24, false }); }
-        if (bd == 32) { add({ 4, 32, false }); add({ 4, 32, true }); }
+        if (bd == 16)
+            add({2, 16, false});
+        if (bd == 24) {
+            add({3, 24, false});
+            add({4, 24, false});
+        }
+        if (bd == 32) {
+            add({4, 32, false});
+            add({4, 32, true});
+        }
         // fallbacks
-        add({ 4, 32, false }); add({ 3, 24, false }); add({ 4, 24, false }); add({ 2, 16, false }); add({ 4, 32, true });
+        add({4, 32, false});
+        add({3, 24, false});
+        add({4, 24, false});
+        add({2, 16, false});
+        add({4, 32, true});
         return v;
     }
 
-    WAVEFORMATEXTENSIBLE make_format(const SampleFmt& f) const {
+    WAVEFORMATEXTENSIBLE make_format(const SampleFmt &f) const {
         WAVEFORMATEXTENSIBLE w = {};
         w.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
         w.Format.nChannels = (WORD)m_devCh;
@@ -342,27 +400,31 @@ private:
 
     bool init_client() {
         release_client();
-        for (const SampleFmt& f : candidate_formats()) {
-            if (try_init_with(f)) return true;
+        for (const SampleFmt &f : candidate_formats()) {
+            if (try_init_with(f))
+                return true;
         }
-        if (m_lastError.is_empty()) fail(ErrorLevel::Fatal, "Unable to initialize WASAPI with any supported format");
+        if (m_lastError.is_empty())
+            fail(ErrorLevel::Fatal, "Unable to initialize WASAPI with any supported format");
         return false;
     }
 
-    bool try_init_with(const SampleFmt& f) {
+    bool try_init_with(const SampleFmt &f) {
         for (int attempt = 0; attempt < 2; ++attempt) {
-            if (!activate_device()) return false;
+            if (!activate_device())
+                return false;
             m_client.Release();
-            if (FAILED(m_dev->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&m_client))) {
+            if (FAILED(m_dev->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void **)&m_client))) {
                 return fail(ErrorLevel::Fatal, "Cannot activate IAudioClient");
             }
             WAVEFORMATEXTENSIBLE wf = make_format(f);
             AUDCLNT_SHAREMODE sm = m_exclusive ? AUDCLNT_SHAREMODE_EXCLUSIVE : AUDCLNT_SHAREMODE_SHARED;
 
             if (cfg_check_format) {
-                WAVEFORMATEX* closest = nullptr;
+                WAVEFORMATEX *closest = nullptr;
                 HRESULT hr = m_client->IsFormatSupported(sm, &wf.Format, m_exclusive ? nullptr : &closest);
-                if (closest) CoTaskMemFree(closest);
+                if (closest)
+                    CoTaskMemFree(closest);
                 // In shared mode we ask for auto-conversion, so S_FALSE is acceptable.
                 if (hr != S_OK && !(!m_exclusive && hr == S_FALSE)) {
                     m_client.Release();
@@ -374,10 +436,12 @@ private:
             m_client->GetDevicePeriod(&defP, &minP);
             REFERENCE_TIME period = cfg_period_min ? minP : defP;
             REFERENCE_TIME dur = (REFERENCE_TIME)(period * buffer_mult());
-            if (m_alignedDuration) dur = m_alignedDuration;
+            if (m_alignedDuration)
+                dur = m_alignedDuration;
 
             DWORD flags = AUDCLNT_STREAMFLAGS_EVENTCALLBACK;
-            if (!m_exclusive) flags |= AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
+            if (!m_exclusive)
+                flags |= AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
 
             HRESULT hr = m_client->Initialize(sm, flags, dur, m_exclusive ? dur : 0, &wf.Format, nullptr);
             if (hr == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED && m_exclusive && attempt == 0) {
@@ -397,16 +461,27 @@ private:
 
         // The device itself initialized; failures from here on are secondary (diagnostic level).
         HRESULT hr2 = m_client->SetEventHandle(m_bufEvent);
-        if (FAILED(hr2)) { m_client.Release(); return fail_hr(ErrorLevel::Diagnostic, "SetEventHandle failed", hr2); }
+        if (FAILED(hr2)) {
+            m_client.Release();
+            return fail_hr(ErrorLevel::Diagnostic, "SetEventHandle failed", hr2);
+        }
         hr2 = m_client->GetBufferSize(&m_bufFrames);
-        if (FAILED(hr2)) { m_client.Release(); return fail_hr(ErrorLevel::Diagnostic, "GetBufferSize failed", hr2); }
-        hr2 = m_client->GetService(__uuidof(IAudioRenderClient), (void**)&m_render);
-        if (FAILED(hr2)) { m_client.Release(); return fail_hr(ErrorLevel::Diagnostic, "No render client", hr2); }
-        m_client->GetService(__uuidof(IAudioClock), (void**)&m_clock);
-        if (m_clock) m_clock->GetFrequency(&m_clockFreq);
+        if (FAILED(hr2)) {
+            m_client.Release();
+            return fail_hr(ErrorLevel::Diagnostic, "GetBufferSize failed", hr2);
+        }
+        hr2 = m_client->GetService(__uuidof(IAudioRenderClient), (void **)&m_render);
+        if (FAILED(hr2)) {
+            m_client.Release();
+            return fail_hr(ErrorLevel::Diagnostic, "No render client", hr2);
+        }
+        m_client->GetService(__uuidof(IAudioClock), (void **)&m_clock);
+        if (m_clock)
+            m_clock->GetFrequency(&m_clockFreq);
         if (!m_exclusive && app_volume_enabled()) {
-            m_client->GetService(__uuidof(ISimpleAudioVolume), (void**)&m_simpleVol);
-            if (m_simpleVol) m_simpleVol->SetMasterVolume(m_gain, nullptr);
+            m_client->GetService(__uuidof(ISimpleAudioVolume), (void **)&m_simpleVol);
+            if (m_simpleVol)
+                m_simpleVol->SetMasterVolume(m_gain, nullptr);
         }
 
         // Ring buffer: sized in device-buffer multiples (only allocated once, kept across re-inits).
@@ -432,7 +507,8 @@ private:
             m_client->Stop();
             m_started = false;
             if (m_sysRunning) {
-                LARGE_INTEGER now; QueryPerformanceCounter(&now);
+                LARGE_INTEGER now;
+                QueryPerformanceCounter(&now);
                 m_sysAccum += now.QuadPart - m_sysStart.QuadPart;
                 m_sysRunning = false;
             }
@@ -451,10 +527,13 @@ private:
 
     // ---------- playback control (lock held) ----------
     void try_start() {
-        if (!m_client || m_paused || m_started) return;
-        if (!m_forceStart && m_ringCount < m_startFrames) return;
-        if (m_ringCount == 0) return;
-        fill_device();                      // prime the device buffer before Start()
+        if (!m_client || m_paused || m_started)
+            return;
+        if (!m_forceStart && m_ringCount < m_startFrames)
+            return;
+        if (m_ringCount == 0)
+            return;
+        fill_device(); // prime the device buffer before Start()
         if (SUCCEEDED(m_client->Start())) {
             m_started = true;
             QueryPerformanceCounter(&m_sysStart);
@@ -469,69 +548,86 @@ private:
                 return (uint64_t)((double)pos * m_rate / (double)m_clockFreq);
         }
         int64_t ticks = m_sysAccum;
-        if (m_sysRunning) { LARGE_INTEGER now; QueryPerformanceCounter(&now); ticks += now.QuadPart - m_sysStart.QuadPart; }
+        if (m_sysRunning) {
+            LARGE_INTEGER now;
+            QueryPerformanceCounter(&now);
+            ticks += now.QuadPart - m_sysStart.QuadPart;
+        }
         uint64_t f = (uint64_t)((double)ticks * m_rate / (double)m_qpcFreq.QuadPart);
         return f > m_submitted ? m_submitted : f;
     }
 
     // Pull frames from the ring into the device buffer, converting float -> device format.
     void fill_device() {
-        if (!m_client || !m_render) return;
+        if (!m_client || !m_render)
+            return;
         UINT32 pad = 0;
-        if (!m_exclusive) m_client->GetCurrentPadding(&pad);
+        if (!m_exclusive)
+            m_client->GetCurrentPadding(&pad);
         UINT32 n = m_bufFrames - pad;
-        if (!n) return;
-        BYTE* dst = nullptr;
-        if (FAILED(m_render->GetBuffer(n, &dst))) return;
+        if (!n)
+            return;
+        BYTE *dst = nullptr;
+        if (FAILED(m_render->GetBuffer(n, &dst)))
+            return;
 
         size_t take = m_ringCount < n ? m_ringCount : n;
         const float gain = (m_exclusive && app_volume_enabled()) ? m_gain : 1.0f;
         for (size_t i = 0; i < take; ++i) {
-            const float* s = &m_ring[((m_ringRead + i) % m_ringFrames) * m_devCh];
+            const float *s = &m_ring[((m_ringRead + i) % m_ringFrames) * m_devCh];
             convert_frame(s, dst + i * m_devCh * m_fmt.container, gain);
         }
-        if (take < n) memset(dst + take * m_devCh * m_fmt.container, 0, (n - take) * m_devCh * m_fmt.container);
+        if (take < n)
+            memset(dst + take * m_devCh * m_fmt.container, 0, (n - take) * m_devCh * m_fmt.container);
         m_ringRead = (m_ringRead + take) % m_ringFrames;
         m_ringCount -= take;
         m_render->ReleaseBuffer(n, 0);
         m_submitted += n;
     }
 
-    void convert_frame(const float* s, BYTE* d, float gain) const {
+    void convert_frame(const float *s, BYTE *d, float gain) const {
         for (uint32_t c = 0; c < m_devCh; ++c) {
             float x = s[c] * gain;
-            if (m_fmt.isFloat) { memcpy(d + c * 4, &x, 4); continue; }
+            if (m_fmt.isFloat) {
+                memcpy(d + c * 4, &x, 4);
+                continue;
+            }
             const double scale = (double)(1ull << (m_fmt.valid - 1));
             double v = x * scale;
-            if (v > scale - 1) v = scale - 1;
-            if (v < -scale) v = -scale;
+            if (v > scale - 1)
+                v = scale - 1;
+            if (v < -scale)
+                v = -scale;
             int64_t iv = (int64_t)std::llrint(v);
             iv <<= (m_fmt.container * 8 - m_fmt.valid);
-            for (int b = 0; b < m_fmt.container; ++b) d[c * m_fmt.container + b] = (BYTE)((iv >> (8 * b)) & 0xFF);
+            for (int b = 0; b < m_fmt.container; ++b)
+                d[c * m_fmt.container + b] = (BYTE)((iv >> (8 * b)) & 0xFF);
         }
     }
 
     // ---------- render thread ----------
-    static DWORD WINAPI thread_proc(LPVOID p) { return ((output_wasapi*)p)->run(); }
+    static DWORD WINAPI thread_proc(LPVOID p) { return ((output_wasapi *)p)->run(); }
 
     DWORD run() {
         CoInitializeEx(nullptr, COINIT_MULTITHREADED);
         DWORD task = 0;
         HANDLE mm = AvSetMmThreadCharacteristicsW(L"Pro Audio", &task);
-        HANDLE h[2] = { m_stopEvent, m_bufEvent };
+        HANDLE h[2] = {m_stopEvent, m_bufEvent};
         for (;;) {
             DWORD r = WaitForMultipleObjects(2, h, FALSE, 100);
-            if (r == WAIT_OBJECT_0) break;
+            if (r == WAIT_OBJECT_0)
+                break;
             EnterCriticalSection(&m_lock);
-            if (r == WAIT_OBJECT_0 + 1 && m_started) fill_device();
+            if (r == WAIT_OBJECT_0 + 1 && m_started)
+                fill_device();
             try_start();
-            if (cfg_auto_disconnect && m_paused && m_client &&
-                GetTickCount() - m_pauseTick > kIdleDisconnectMs) {
+            if (cfg_auto_disconnect && m_paused && m_client && GetTickCount() - m_pauseTick > kIdleDisconnectMs) {
                 release_client(); // device is re-opened on resume
             }
             LeaveCriticalSection(&m_lock);
         }
-        if (mm) AvRevertMmThreadCharacteristics(mm);
+        if (mm)
+            AvRevertMmThreadCharacteristics(mm);
         CoUninitialize();
         return 0;
     }
@@ -554,7 +650,7 @@ private:
     CComPtr<IAudioRenderClient> m_render;
     CComPtr<IAudioClock> m_clock;
     CComPtr<ISimpleAudioVolume> m_simpleVol;
-    SampleFmt m_fmt = { 4, 32, true };
+    SampleFmt m_fmt = {4, 32, true};
     UINT32 m_bufFrames = 0;
     UINT64 m_clockFreq = 0;
     REFERENCE_TIME m_alignedDuration = 0;
