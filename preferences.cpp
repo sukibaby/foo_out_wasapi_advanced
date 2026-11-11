@@ -1,8 +1,8 @@
 #include <foobar2000/helpers/foobar2000+atl.h>
 #include <foobar2000/SDK/coreDarkMode.h>
-#include "config.h"
-#include "resource.h"
-#include "tooltips.h"
+#include "config.hpp"
+#include "resource.hpp"
+#include "tooltips.hpp"
 #include <algorithm>
 #include <vector>
 

@@ -8,7 +8,7 @@
 #include <vector>
 #include <cmath>
 #include <cstring>
-#include "config.h"
+#include "config.hpp"
 
 #pragma comment(lib, "avrt.lib")
 #pragma comment(lib, "ole32.lib")

@@ -95,9 +95,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="config.h" />
-    <ClInclude Include="resource.h" />
-    <ClInclude Include="tooltips.h" />
+    <ClInclude Include="config.hpp" />
+    <ClInclude Include="resource.hpp" />
+    <ClInclude Include="tooltips.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="config.cpp" />
@@ -116,9 +116,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
   <Target Name="CheckBuildPaths" BeforeTargets="PrepareForBuild">
-    <Error Condition="'$(Fb2kSdkRoot)' == '' Or !Exists('$(Fb2kSdkRoot)\foobar2000\SDK\foobar2000.h')"
-           Text="foobar2000 SDK not found. Set Fb2kSdkRoot (build.bat arg 1, local.props, or FB2K_SDK env var). Current value: '$(Fb2kSdkRoot)'" />
-    <Error Condition="'$(WtlRoot)' == '' Or !Exists('$(WtlRoot)\Include\atlapp.h')"
-           Text="WTL not found. Set WtlRoot (build.bat arg 2, local.props, or WTL_ROOT env var). Current value: '$(WtlRoot)'" />
+    <Error Condition="'$(Fb2kSdkRoot)' == '' Or !Exists('$(Fb2kSdkRoot)\foobar2000\SDK\foobar2000.h')" Text="foobar2000 SDK not found. Set Fb2kSdkRoot (build.bat arg 1, local.props, or FB2K_SDK env var). Current value: '$(Fb2kSdkRoot)'" />
+    <Error Condition="'$(WtlRoot)' == '' Or !Exists('$(WtlRoot)\Include\atlapp.h')" Text="WTL not found. Set WtlRoot (build.bat arg 2, local.props, or WTL_ROOT env var). Current value: '$(WtlRoot)'" />
   </Target>
 </Project>

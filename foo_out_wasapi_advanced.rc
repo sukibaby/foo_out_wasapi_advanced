@@ -1,6 +1,6 @@
 #include <windows.h>
 #include <commctrl.h>
-#include "resource.h"
+#include "resource.hpp"
 
 // Base size 330 x 260 dialog units. The preferences code stretches the groups, checkboxes and sliders
 // to the width of the preferences pane (see OnSize in preferences.cpp).
