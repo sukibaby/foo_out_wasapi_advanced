@@ -25,13 +25,13 @@ extern cfg_int cfg_start_x100;      // start-playing threshold, multiplier of de
 constexpr int kDefMode           = mode_shared;  // mode_shared / mode_exclusive
 constexpr int kDefAppVolume      = 0;  // Enable volume control (forced on in exclusive mode)
 constexpr int kDefGapless        = 1;  // Gapless mode playback
-constexpr int kDefAutoDisconnect = 0;  // Automatically disconnect when idle
+constexpr int kDefAutoDisconnect = 1;  // Automatically disconnect when idle
 constexpr int kDefMonoToStereo   = 0;  // Convert mono to stereo
-constexpr int kDefCheckFormat    = 1;  // Call IsFormatSupported before Initialize
+constexpr int kDefCheckFormat    = 0;  // Call IsFormatSupported before Initialize
 constexpr int kDefClockWasapi    = 1;  // 1 = WASAPI clock, 0 = system clock
 constexpr int kDef16As24         = 0;  // Play 16 bit streams as 24 bit
 constexpr int kDefMatchRate      = 0;  // Automatically match device's configured sample rate
-constexpr int kDefSuppressDiag   = 0;  // Suppress non-critical (diagnostic) error messages
+constexpr int kDefSuppressDiag   = 1;  // Suppress non-critical (diagnostic) error messages
 constexpr int kDefPeriodMin      = 0;  // 0 = default device period, 1 = minimum
 // Sliders (x100): buffer multiplier, ring buffer, start-playing threshold
 constexpr int kBufferMin = 100,  kBufferMax = 2000, kBufferDef = 700;
