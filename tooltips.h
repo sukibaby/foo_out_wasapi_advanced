@@ -33,15 +33,15 @@ inline constexpr TipEntry kTooltips[] = {
     {IDC_CHK_CHECKFORMAT, L"Asks the device whether it supports the audio format (IAudioClient::IsFormatSupported) before "
                           L"opening it. Some drivers answer incorrectly, so this isn't always desired."},
 
-    {IDC_CHK_WASAPICLOCK, L"Determines whether the audio device or Windows' built-in high resolution timer is used for"
+    {IDC_CHK_WASAPICLOCK, L"Determines whether the audio device or Windows' built-in high resolution timer is used for "
                           L"timing/clocking."},
 
-    {IDC_CHK_16AS24, L"Force 16-bit audio to be output as 24-bit if enabled.. The sound itself is unchanged."},
+    {IDC_CHK_16AS24, L"Force 16-bit audio to be output as 24-bit if enabled. The sound itself is unchanged."},
 
     {IDC_CHK_MATCHRATE, L"If enabled, foobar2000's built-in resampler will be used to convert all audio to the sample rate "
                         L"set for this device in Windows (Sound settings > Device Properties > Advanced > Default Format) "
                         L"Avoids Windows' own resampling in shared mode and rate switching in exclusive mode"
-                        L"mode. If the rate cannot be read, audio is left unchanged. Takes effect the next time playback starts."
+                        L"mode. If the rate cannot be read, audio is left unchanged. Takes effect the next time playback starts. "
                         L"Don't enable this if you wish to use a separate resampler (for example, a resampling DSP plugin)."},
 
     {IDC_CHK_SUPPRESSDIAG, L"If enabled, minor errors will be reported in a pop-up. Serious errors, "
