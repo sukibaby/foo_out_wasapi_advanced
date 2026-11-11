@@ -17,7 +17,7 @@ BEGIN
     CONTROL         "Gapless mode playback", IDC_CHK_GAPLESS, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 57, 310, 10
     CONTROL         "Automatically disconnect when idle", IDC_CHK_AUTODISCONNECT, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 68, 310, 10
     CONTROL         "Convert mono to stereo", IDC_CHK_MONO2STEREO, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 79, 310, 10
-    CONTROL         "Call IAudioClient::IsFormatSupported before IAudioClient::Initialize", IDC_CHK_CHECKFORMAT, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 90, 310, 10
+    CONTROL         "Check if audio format is supported before attempting output", IDC_CHK_CHECKFORMAT, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 90, 310, 10
     CONTROL         "Use WASAPI as clock (unchecked: use system clock)", IDC_CHK_WASAPICLOCK, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 101, 310, 10
     CONTROL         "Play 16 bit streams as 24 bit", IDC_CHK_16AS24, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 112, 310, 10
     CONTROL         "Automatically match device's configured sample rate", IDC_CHK_MATCHRATE, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 123, 310, 10
