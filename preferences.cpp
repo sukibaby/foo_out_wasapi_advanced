@@ -2,6 +2,7 @@
 #include <foobar2000/SDK/coreDarkMode.h>
 #include "config.h"
 #include "resource.h"
+#include "tooltips.h"
 
 using namespace wcfg;
 
@@ -83,8 +84,41 @@ private:
         CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).SetTicFreq(100);
         CTrackBarCtrl(GetDlgItem(IDC_SLD_START)).SetTicFreq(100);
         write_ui(from_cfg());
+        InitTooltips();
         m_dark.AddDialogWithControls(*this);
         return TRUE;
+    }
+
+    // One tooltip per control, texts come from tooltips.h.
+    void InitTooltips() {
+        if (!m_tip.Create(*this, nullptr, nullptr, TTS_ALWAYSTIP | TTS_NOPREFIX)) return;
+        {
+            CClientDC dc(*this);
+            m_tip.SetMaxTipWidth(MulDiv(360, dc.GetDeviceCaps(LOGPIXELSX), 96)); // enables word wrap
+        }
+        m_tip.SetDelayTime(TTDT_INITIAL, 400);
+        m_tip.SetDelayTime(TTDT_AUTOPOP, 30000);
+
+        for (const TipEntry& e : kTooltips) {
+            CWindow ctl(GetDlgItem(e.id));
+            if (!ctl.IsWindow()) continue;
+            LPWSTR text = const_cast<LPWSTR>(e.text); // static string, the tooltip only keeps the pointer
+
+            // Tool on the control itself (works while the control is enabled).
+            CToolInfo ti(TTF_SUBCLASS | TTF_IDISHWND, *this, (UINT_PTR)ctl.m_hWnd, nullptr, text);
+            m_tip.AddTool(&ti);
+
+            // A disabled control gets no mouse messages, so the app-volume checkbox (disabled in exclusive
+            // mode) also gets a rectangle tool on the dialog, which still sees the mouse.
+            if (e.id == IDC_CHK_APPVOLUME) {
+                CRect rc;
+                ctl.GetWindowRect(&rc);
+                ScreenToClient(&rc);
+                CToolInfo tr(TTF_SUBCLASS, *this, kAppVolRectToolId, &rc, text);
+                m_tip.AddTool(&tr);
+            }
+        }
+        m_tip.Activate(TRUE);
     }
 
     void OnClicked(UINT, int id, CWindow) {
