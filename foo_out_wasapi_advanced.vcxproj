@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- SDK / WTL locations: /p:Fb2kSdkRoot=... /p:WtlRoot=... (build.bat), local.props, or env vars FB2K_SDK / WTL_ROOT -->
+  <Import Project="$(MSBuildThisFileDirectory)local.props" Condition="Exists('$(MSBuildThisFileDirectory)local.props')" />
+  <PropertyGroup>
+    <Fb2kSdkRoot Condition="'$(Fb2kSdkRoot)' == '' And '$(FB2K_SDK)' != ''">$(FB2K_SDK)</Fb2kSdkRoot>
+    <WtlRoot Condition="'$(WtlRoot)' == '' And '$(WTL_ROOT)' != ''">$(WTL_ROOT)</WtlRoot>
+    <AtlInclude Condition="'$(AtlInclude)' == '' And '$(ATL_INCLUDE)' != ''">$(ATL_INCLUDE)</AtlInclude>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{cca22877-d9f2-4546-abca-a6cab47d83c4}</ProjectGuid>
+    <RootNamespace>foo_out_wasapi_advanced</RootNamespace>
+    <TargetName>foo_out_wasapi_custom</TargetName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <!-- Explicit absolute output dirs: sources, project and build.bat/clean.bat all live in one folder. -->
+  <PropertyGroup>
+    <OutDir>$(MSBuildProjectDirectory)\x64\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\x64\$(Configuration)\obj\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalIncludeDirectories>$(Fb2kSdkRoot);$(Fb2kSdkRoot)\foobar2000;$(WtlRoot)\Include;$(AtlInclude);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableUAC>false</EnableUAC>
+      <AdditionalLibraryDirectories>$(Fb2kSdkRoot)\pfc\x64\$(Configuration);$(Fb2kSdkRoot)\foobar2000\SDK\x64\$(Configuration);$(Fb2kSdkRoot)\foobar2000\foobar2000_component_client\x64\$(Configuration);$(Fb2kSdkRoot)\foobar2000\helpers\x64\$(Configuration);$(Fb2kSdkRoot)\foobar2000\shared;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>pfc.lib;foobar2000_SDK.lib;foobar2000_component_client.lib;foobar2000_sdk_helpers.lib;shared-x64.lib;avrt.lib;ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="config.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="config.cpp" />
+    <ClCompile Include="output_wasapi.cpp" />
+    <ClCompile Include="preferences.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="foo_out_wasapi_custom.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
+    <None Include="build.bat" />
+    <None Include="clean.bat" />
+    <None Include="local.props.example" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+  <Target Name="CheckBuildPaths" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(Fb2kSdkRoot)' == '' Or !Exists('$(Fb2kSdkRoot)\foobar2000\SDK\foobar2000.h')"
+           Text="foobar2000 SDK not found. Set Fb2kSdkRoot (build.bat arg 1, local.props, or FB2K_SDK env var). Current value: '$(Fb2kSdkRoot)'" />
+    <Error Condition="'$(WtlRoot)' == '' Or !Exists('$(WtlRoot)\Include\atlapp.h')"
+           Text="WTL not found. Set WtlRoot (build.bat arg 2, local.props, or WTL_ROOT env var). Current value: '$(WtlRoot)'" />
+  </Target>
+</Project>

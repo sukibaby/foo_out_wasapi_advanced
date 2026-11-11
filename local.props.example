@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Optional: copy this file to local.props (same folder as the .vcxproj) to build from the
+  Visual Studio IDE without passing paths. build.bat does not need it - it passes the paths
+  on the MSBuild command line. Paths must NOT end with a backslash.
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Fb2kSdkRoot>C:\path\to\foobar-SDK-2026-10-01</Fb2kSdkRoot>
+    <WtlRoot>C:\path\to\WTL10_01_Release</WtlRoot>
+    <!-- Folder containing atlbase.h, e.g. ...\VC\Tools\MSVC\14.xx.xxxxx\atlmfc\include. Needed when the
+         selected toolset has no ATL of its own (build.bat finds and passes this automatically). -->
+    <AtlInclude>C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\atlmfc\include</AtlInclude>
+  </PropertyGroup>
+</Project>

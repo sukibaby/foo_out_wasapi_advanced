@@ -1,6 +1,5 @@
 #include <foobar2000/helpers/foobar2000+atl.h>
 #include <foobar2000/SDK/coreDarkMode.h>
-#include <libPPUI/CDialogResizeHelper.h>
 #include "config.h"
 #include "resource.h"
 
@@ -30,22 +29,24 @@ Settings from_cfg() {
 }
 
 Settings defaults() {
-    return { 
-	mode_shared, // WASAPI mode
-	0, // Enable Volume Control (must be forced by exclusive mode!)
-	1, // Gapless mode playback
-	0, // disconnect when idle
-	0, // convert mono to stereo 
-	1, // call isformatsupported before initialize
-	1, // wasapi as clock (0  =  system clock)
-	0, // play 16 bit stream as 24bit
-	0, // device period (1 = minimum)
-	kBufferDef, kRingDef, kStartDef };
+    return {
+        mode_shared, // WASAPI mode
+        0,           // Enable volume control (forced on by exclusive mode)
+        1,           // Gapless mode playback
+        0,           // Disconnect when idle
+        0,           // Convert mono to stereo
+        1,           // Call IsFormatSupported before Initialize
+        1,           // WASAPI as clock (0 = system clock)
+        0,           // Play 16 bit streams as 24 bit
+        0,           // Device period (1 = minimum)
+        kBufferDef, kRingDef, kStartDef };
 }
 
 class CWasapiPrefs : public CDialogImpl<CWasapiPrefs>, public preferences_page_instance {
+    preferences_page_callback::ptr m_cb;
 public:
     CWasapiPrefs(preferences_page_callback::ptr cb) : m_cb(cb) {}
+    ~CWasapiPrefs() noexcept {}
     enum { IDD = IDD_WASAPI_PREFS };
 
     // preferences_page_instance
@@ -86,79 +87,81 @@ private:
         return TRUE;
     }
 
-	void OnClicked(UINT, int id, CWindow) {
-		if (id == IDC_BTN_DEFAULTS) write_ui(defaults());
-		else if (id == IDC_MODE_SHARED || id == IDC_MODE_EXCLUSIVE) update_app_volume_control();
-		m_cb->on_state_changed();
-	}
+    void OnClicked(UINT, int id, CWindow) {
+        if (id == IDC_BTN_DEFAULTS) write_ui(defaults());
+        if (id == IDC_MODE_SHARED || id == IDC_MODE_EXCLUSIVE) update_app_volume_control();
+        m_cb->on_state_changed();
+    }
 
-	void OnHScroll(UINT, UINT, CTrackBarCtrl) {
-		update_labels();
-		m_cb->on_state_changed();
-	}
+    // Exclusive mode has no Windows mixer to fall back on, so app volume control is forced on and greyed out.
+    // In shared mode the checkbox is a normal, selectable option.
+    void update_app_volume_control() {
+        const bool exclusive = IsDlgButtonChecked(IDC_MODE_EXCLUSIVE) != 0;
+        if (exclusive) CheckDlgButton(IDC_CHK_APPVOLUME, BST_CHECKED);
+        ::EnableWindow(GetDlgItem(IDC_CHK_APPVOLUME), exclusive ? FALSE : TRUE);
+    }
 
-	// Keep start threshold <= ring size at apply time (ring buffer always holds the start amount).
-	Settings read_ui() {
-		Settings s;
-		s.mode = IsDlgButtonChecked(IDC_MODE_EXCLUSIVE) ? mode_exclusive : mode_shared;
-		s.appVol = s.mode == mode_exclusive || IsDlgButtonChecked(IDC_CHK_APPVOLUME) ? 1 : 0;
-		s.gapless = IsDlgButtonChecked(IDC_CHK_GAPLESS) ? 1 : 0;
-		s.idle = IsDlgButtonChecked(IDC_CHK_AUTODISCONNECT) ? 1 : 0;
-		s.mono = IsDlgButtonChecked(IDC_CHK_MONO2STEREO) ? 1 : 0;
-		s.check = IsDlgButtonChecked(IDC_CHK_CHECKFORMAT) ? 1 : 0;
-		s.clockWasapi = IsDlgButtonChecked(IDC_CHK_WASAPICLOCK) ? 1 : 0;
-		s.as24 = IsDlgButtonChecked(IDC_CHK_16AS24) ? 1 : 0;
-		s.periodMin = IsDlgButtonChecked(IDC_PERIOD_MIN) ? 1 : 0;
-		s.buf = CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).GetPos() * kBufStepX100;
-		s.ring = CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).GetPos() * kRingStepX100;
-		s.start = CTrackBarCtrl(GetDlgItem(IDC_SLD_START)).GetPos() * kRingStepX100;
-		return s;
-	}
+    void OnHScroll(UINT, UINT, CTrackBarCtrl) {
+        update_labels();
+        m_cb->on_state_changed();
+    }
 
-	void write_ui(const Settings& s) {
-		CheckRadioButton(IDC_MODE_SHARED, IDC_MODE_EXCLUSIVE, s.mode == mode_exclusive ? IDC_MODE_EXCLUSIVE : IDC_MODE_SHARED);
-		CheckDlgButton(IDC_CHK_APPVOLUME, s.appVol);
-		update_app_volume_control();
-		CheckDlgButton(IDC_CHK_GAPLESS, s.gapless);
-		CheckDlgButton(IDC_CHK_AUTODISCONNECT, s.idle);
-		CheckDlgButton(IDC_CHK_MONO2STEREO, s.mono);
-		CheckDlgButton(IDC_CHK_CHECKFORMAT, s.check);
-		CheckDlgButton(IDC_CHK_WASAPICLOCK, s.clockWasapi);
-		CheckDlgButton(IDC_CHK_16AS24, s.as24);
-		CheckRadioButton(IDC_PERIOD_DEFAULT, IDC_PERIOD_MIN, s.periodMin ? IDC_PERIOD_MIN : IDC_PERIOD_DEFAULT);
-		CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).SetPos(s.buf / kBufStepX100);
-		CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).SetPos(s.ring / kRingStepX100);
-		CTrackBarCtrl(GetDlgItem(IDC_SLD_START)).SetPos(s.start / kRingStepX100);
-		update_labels();
-	}
+    // Keep start threshold <= ring size at apply time (ring buffer always holds the start amount).
+    Settings read_ui() {
+        Settings s;
+        s.mode        = IsDlgButtonChecked(IDC_MODE_EXCLUSIVE) ? mode_exclusive : mode_shared;
+        s.appVol      = (s.mode == mode_exclusive || IsDlgButtonChecked(IDC_CHK_APPVOLUME)) ? 1 : 0;
+        s.gapless     = IsDlgButtonChecked(IDC_CHK_GAPLESS) ? 1 : 0;
+        s.idle        = IsDlgButtonChecked(IDC_CHK_AUTODISCONNECT) ? 1 : 0;
+        s.mono        = IsDlgButtonChecked(IDC_CHK_MONO2STEREO) ? 1 : 0;
+        s.check       = IsDlgButtonChecked(IDC_CHK_CHECKFORMAT) ? 1 : 0;
+        s.clockWasapi = IsDlgButtonChecked(IDC_CHK_WASAPICLOCK) ? 1 : 0;
+        s.as24        = IsDlgButtonChecked(IDC_CHK_16AS24) ? 1 : 0;
+        s.periodMin   = IsDlgButtonChecked(IDC_PERIOD_MIN) ? 1 : 0;
+        s.buf   = CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).GetPos() * kBufStepX100;
+        s.ring  = CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).GetPos() * kRingStepX100;
+        s.start = CTrackBarCtrl(GetDlgItem(IDC_SLD_START)).GetPos() * kRingStepX100;
+        return s;
+    }
 
-	void update_app_volume_control() {
-		bool exclusive = IsDlgButtonChecked(IDC_MODE_EXCLUSIVE) != 0;
-		if (exclusive) CheckDlgButton(IDC_CHK_APPVOLUME, BST_CHECKED);
-		GetDlgItem(IDC_CHK_APPVOLUME).EnableWindow(!exclusive);
-	}
+    void write_ui(const Settings& s) {
+        CheckRadioButton(IDC_MODE_SHARED, IDC_MODE_EXCLUSIVE, s.mode == mode_exclusive ? IDC_MODE_EXCLUSIVE : IDC_MODE_SHARED);
+        CheckDlgButton(IDC_CHK_APPVOLUME, s.appVol);
+        CheckDlgButton(IDC_CHK_GAPLESS, s.gapless);
+        CheckDlgButton(IDC_CHK_AUTODISCONNECT, s.idle);
+        CheckDlgButton(IDC_CHK_MONO2STEREO, s.mono);
+        CheckDlgButton(IDC_CHK_CHECKFORMAT, s.check);
+        CheckDlgButton(IDC_CHK_WASAPICLOCK, s.clockWasapi);
+        CheckDlgButton(IDC_CHK_16AS24, s.as24);
+        CheckRadioButton(IDC_PERIOD_DEFAULT, IDC_PERIOD_MIN, s.periodMin ? IDC_PERIOD_MIN : IDC_PERIOD_DEFAULT);
+        CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).SetPos(s.buf / kBufStepX100);
+        CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).SetPos(s.ring / kRingStepX100);
+        CTrackBarCtrl(GetDlgItem(IDC_SLD_START)).SetPos(s.start / kRingStepX100);
+        update_app_volume_control();
+        update_labels();
+    }
 
-	void update_labels() {
-		Settings s = read_ui();
-		pfc::string_formatter f;
-		uSetDlgItemText(*this, IDC_LBL_BUFFER, (f << pfc::format_float(s.buf / 100.0, 0, 1)).c_str());
-		f.reset();
-		uSetDlgItemText(*this, IDC_LBL_RING, (f << pfc::format_float(s.ring / 100.0, 0, 2)).c_str());
-		f.reset();
-		uSetDlgItemText(*this, IDC_LBL_START, (f << pfc::format_float(s.start / 100.0, 0, 2)).c_str());
-	}
+    void update_labels() {
+        Settings s = read_ui();
+        pfc::string_formatter f;
+        uSetDlgItemText(*this, IDC_LBL_BUFFER, (f << pfc::format_float(s.buf / 100.0, 0, 1)).c_str());
+        f.reset();
+        uSetDlgItemText(*this, IDC_LBL_RING, (f << pfc::format_float(s.ring / 100.0, 0, 2)).c_str());
+        f.reset();
+        uSetDlgItemText(*this, IDC_LBL_START, (f << pfc::format_float(s.start / 100.0, 0, 2)).c_str());
+    }
 };
 
 class preferences_page_wasapi : public preferences_page_v3 {
 public:
-	preferences_page_instance::ptr instantiate(HWND parent, preferences_page_callback::ptr callback) override {
-		auto p = fb2k::service_new<CWasapiPrefs>(callback);
-		p->Create(parent);
-		return p;
-	}
-	const char* get_name() override { return "WASAPI (custom)"; }
-	GUID get_guid() override { return guid_prefs_page; }
-	GUID get_parent_guid() override { return guid_output; } // Playback > Output (use guid_playback if undeclared)
+    preferences_page_instance::ptr instantiate(fb2k::hwnd_t parent, preferences_page_callback::ptr callback) override {
+        auto p = fb2k::service_new<CWasapiPrefs>(callback);
+        p->Create(parent);
+        return p;
+    }
+    const char* get_name() override { return "WASAPI (custom)"; }
+    GUID get_guid() override { return guid_prefs_page; }
+    GUID get_parent_guid() override { return guid_output; } // Playback > Output
 };
 
 preferences_page_factory_t<preferences_page_wasapi> g_prefs_factory;

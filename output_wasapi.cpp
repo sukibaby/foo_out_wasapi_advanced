@@ -23,8 +23,14 @@ static const GUID guid_default_device = { 0x7b2d9f64, 0x3a0c, 0x4c55, { 0x8e, 0x
 static const GUID kSubPCM   = { 0x00000001, 0x0000, 0x0010, { 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 } };
 static const GUID kSubFloat = { 0x00000003, 0x0000, 0x0010, { 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 } };
 
+static pfc::string8 to_utf8(const wchar_t* w) {
+    pfc::string8 out;
+    out = pfc::stringcvt::string_utf8_from_wide(w).get_ptr();
+    return out;
+}
+
 static GUID endpoint_guid(const wchar_t* id) {
-    pfc::string8 u = pfc::utf8FromWide(id);
+    pfc::string8 u = to_utf8(id);
     return hasher_md5::get()->process_single_string(u).asGUID();
 }
 
@@ -61,6 +67,8 @@ public:
     static bool g_needs_bitdepth_config() { return true; }
     static bool g_needs_dither_config() { return false; }
     static bool g_needs_device_list_prefixes() { return false; }
+    static bool g_supports_multiple_streams() { return false; }
+    static bool g_is_high_latency() { return false; }
 
     static void g_enum_devices(output_device_enum_callback& cb) {
         cb.on_device(guid_default_device, "Default Device", 14);
@@ -80,21 +88,21 @@ public:
             if (FAILED(dev->OpenPropertyStore(STGM_READ, &ps))) continue;
             PROPVARIANT v; PropVariantInit(&v);
             if (SUCCEEDED(ps->GetValue(PKEY_Device_FriendlyName, &v)) && v.vt == VT_LPWSTR) {
-                pfc::string8 name = pfc::utf8FromWide(v.pwszVal);
-                cb.on_device(g, name.c_str(), name.length());
+                pfc::string8 name = to_utf8(v.pwszVal);
+                cb.on_device(g, name.c_str(), (unsigned)name.length());
             }
             PropVariantClear(&v);
         }
     }
 
     // ---- output_impl ----
-    void open(t_samplespec const& spec) {
+    void open(audio_chunk::spec_t const& spec) {
         EnterCriticalSection(&m_lock);
-        m_rate = spec.m_sample_rate;
-        m_srcCh = spec.m_channels;
+        m_rate = spec.sampleRate;
+        m_srcCh = spec.chanCount;
         m_devCh = (m_srcCh == 1 && cfg_mono_to_stereo) ? 2 : m_srcCh;
         m_expandMono = (m_devCh != m_srcCh);
-        uint32_t mask = spec.m_channel_config;
+        uint32_t mask = spec.chanMask;
         if (m_expandMono) mask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT;
         else if (mask == 0) mask = audio_chunk::g_guess_channel_config(m_devCh);
         m_mask = mask;
@@ -108,15 +116,15 @@ public:
 
     void write(const audio_chunk& chunk) {
         EnterCriticalSection(&m_lock);
-        const float* in = chunk.get_data();
+        const audio_sample* in = chunk.get_data();
         size_t frames = chunk.get_sample_count();
         size_t space = m_ringFrames - m_ringCount;
         if (frames > space) frames = space; // foobar normally respects can_write_samples()
         for (size_t i = 0; i < frames; ++i) {
             size_t wr = (m_ringRead + m_ringCount) % m_ringFrames;
             float* dst = &m_ring[wr * m_devCh];
-            if (m_expandMono) { dst[0] = dst[1] = in[i]; }
-            else memcpy(dst, in + i * m_srcCh, sizeof(float) * m_srcCh);
+            if (m_expandMono) { dst[0] = dst[1] = (float)in[i]; }
+            else for (uint32_t c = 0; c < m_srcCh; ++c) dst[c] = (float)in[i * m_srcCh + c];
             ++m_ringCount;
         }
         m_lastActivity = GetTickCount();
@@ -141,13 +149,6 @@ public:
         LeaveCriticalSection(&m_lock);
         return n;
     }
-	
-	bool is_progressing() override {
-        EnterCriticalSection(&m_lock);
-        bool progressing = m_client && m_started && !m_paused;
-        LeaveCriticalSection(&m_lock);
-        return progressing;
-    }
 
     void on_update() {}
 
@@ -165,11 +166,22 @@ public:
         LeaveCriticalSection(&m_lock);
     }
 
-    void force_play() {
+    // output_impl defers this until its own queue is empty (end of stream / nothing more coming).
+    void on_force_play() {
         EnterCriticalSection(&m_lock);
         m_forceStart = true;
         try_start();
         LeaveCriticalSection(&m_lock);
+    }
+
+    // Must be overridden: the SDK's default implementation calls get_latency_info(), which calls back into
+    // get_latency_samples_v2() -> is_progressing() and recurses until the stack overflows.
+    // Reports whether the WASAPI client is actually running right now.
+    bool is_progressing() {
+        EnterCriticalSection(&m_lock);
+        const bool playing = (m_client != nullptr) && m_started && !m_paused;
+        LeaveCriticalSection(&m_lock);
+        return playing;
     }
 
     void on_flush() {
@@ -194,7 +206,7 @@ public:
 
     void volume_set(double dB) {
         EnterCriticalSection(&m_lock);
-        if (cfg_app_volume) {
+        if (app_volume_enabled()) {
             m_gain = (float)std::pow(10.0, dB / 20.0);
             if (m_simpleVol) m_simpleVol->SetMasterVolume(m_gain, nullptr);
         } else {
@@ -204,6 +216,9 @@ public:
     }
 
 private:
+    // Exclusive mode bypasses the Windows mixer, so app-side volume is always required there.
+    bool app_volume_enabled() const { return m_exclusive || cfg_mode == mode_exclusive || cfg_app_volume; }
+
     // ---------- device / client setup (call with lock held) ----------
     bool activate_device() {
         m_dev.Release();
@@ -310,7 +325,9 @@ private:
                 continue; // re-activate and retry with the aligned duration
             }
             if (FAILED(hr)) {
-                m_lastError = pfc::string8() << "IAudioClient::Initialize failed (0x" << pfc::format_hex((t_uint32)hr, 8) << ")";
+                char msg[96];
+                snprintf(msg, sizeof(msg), "IAudioClient::Initialize failed (0x%08X)", (unsigned)hr);
+                m_lastError = msg;
                 m_client.Release();
                 return false;
             }
@@ -324,7 +341,7 @@ private:
         if (FAILED(m_client->GetService(__uuidof(IAudioRenderClient), (void**)&m_render))) { m_lastError = "No render client"; m_client.Release(); return false; }
         m_client->GetService(__uuidof(IAudioClock), (void**)&m_clock);
         if (m_clock) m_clock->GetFrequency(&m_clockFreq);
-        if (!m_exclusive && cfg_app_volume) {
+        if (!m_exclusive && app_volume_enabled()) {
             m_client->GetService(__uuidof(ISimpleAudioVolume), (void**)&m_simpleVol);
             if (m_simpleVol) m_simpleVol->SetMasterVolume(m_gain, nullptr);
         }
@@ -404,7 +421,7 @@ private:
         if (FAILED(m_render->GetBuffer(n, &dst))) return;
 
         size_t take = m_ringCount < n ? m_ringCount : n;
-        const float gain = (m_exclusive && cfg_app_volume) ? m_gain : 1.0f;
+        const float gain = (m_exclusive && app_volume_enabled()) ? m_gain : 1.0f;
         for (size_t i = 0; i < take; ++i) {
             const float* s = &m_ring[((m_ringRead + i) % m_ringFrames) * m_devCh];
             convert_frame(s, dst + i * m_devCh * m_fmt.container, gain);
