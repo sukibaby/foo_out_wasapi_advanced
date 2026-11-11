@@ -5,7 +5,7 @@
 
 using namespace wcfg;
 
-DECLARE_COMPONENT_VERSION("WASAPI advanced output", "0.2.0",
+DECLARE_COMPONENT_VERSION("WASAPI advanced output", "1.1.0",
     "Configurable WASAPI output component featuring shared/exclusive modes, buffer tuning, & more. github.com/sukibaby/foo_out_wasapi_advanced");
 VALIDATE_COMPONENT_FILENAME("foo_out_wasapi_custom.dll");
 
