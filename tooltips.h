@@ -49,6 +49,12 @@ inline constexpr TipEntry kTooltips[] = {
       L"Sends 16-bit audio to the device as 24-bit (exclusive mode). The sound itself is unchanged; this "
       L"only helps devices or drivers that work better with, or only accept, 24-bit." },
 
+    { IDC_CHK_MATCHRATE,
+      L"Converts all audio to the sample rate set for this device in Windows (Sound settings > device "
+      L"Properties > Advanced > Default Format), using foobar2000's resampler. Every track is then played at "
+      L"one steady rate, which avoids Windows' own resampling in shared mode and rate switching in exclusive "
+      L"mode. If the rate cannot be read, audio is left unchanged. Takes effect the next time playback starts." },
+
     // ---- Device period ----
     { IDC_PERIOD_DEFAULT,
       L"Uses the device's default period: how often the device asks for more audio. A safe choice "

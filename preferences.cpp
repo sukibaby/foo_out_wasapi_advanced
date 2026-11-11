@@ -21,14 +21,15 @@ namespace {
 constexpr int kBufStepX100 = 10, kRingStepX100 = 5;
 
 struct Settings {
-    int mode, appVol, gapless, idle, mono, check, clockWasapi, as24, periodMin, buf, ring, start;
+    int mode, appVol, gapless, idle, mono, check, clockWasapi, as24, periodMin, buf, ring, start, matchRate, suppressDiag;
     bool operator==(const Settings& o) const { return !memcmp(this, &o, sizeof(*this)); }
 };
 
 Settings from_cfg() {
     return { (int)cfg_mode, (int)cfg_app_volume, (int)cfg_gapless, (int)cfg_auto_disconnect, (int)cfg_mono_to_stereo,
              (int)cfg_check_format, (int)cfg_clock_wasapi, (int)cfg_16_as_24, (int)cfg_period_min,
-             (int)cfg_buffer_x100, (int)cfg_ring_x100, (int)cfg_start_x100 };
+             (int)cfg_buffer_x100, (int)cfg_ring_x100, (int)cfg_start_x100,
+             (int)cfg_match_rate, (int)cfg_suppress_diag };
 }
 
 Settings defaults() {
@@ -42,7 +43,8 @@ Settings defaults() {
         1,           // WASAPI as clock (0 = system clock)
         0,           // Play 16 bit streams as 24 bit
         0,           // Device period (1 = minimum)
-        kBufferDef, kRingDef, kStartDef };
+        kBufferDef, kRingDef, kStartDef,
+        0,           // Automatically match device's configured sample rate
 }
 
 class CWasapiPrefs : public CDialogImpl<CWasapiPrefs>, public preferences_page_instance {
@@ -65,6 +67,7 @@ public:
         cfg_mono_to_stereo = s.mono; cfg_check_format = s.check; cfg_clock_wasapi = s.clockWasapi;
         cfg_16_as_24 = s.as24; cfg_period_min = s.periodMin;
         cfg_buffer_x100 = s.buf; cfg_ring_x100 = s.ring; cfg_start_x100 = s.start;
+        cfg_match_rate = s.matchRate; cfg_suppress_diag = s.suppressDiag;
         m_cb->on_state_changed();
     }
     void reset() override { write_ui(defaults()); m_cb->on_state_changed(); }
@@ -96,7 +99,7 @@ private:
         static const int stretchIds[] = {
             IDC_GRP_MODE, IDC_GRP_OPTIONS, IDC_GRP_PERIOD, IDC_GRP_BUFFER,
             IDC_CHK_APPVOLUME, IDC_CHK_GAPLESS, IDC_CHK_AUTODISCONNECT, IDC_CHK_MONO2STEREO,
-            IDC_CHK_CHECKFORMAT, IDC_CHK_WASAPICLOCK, IDC_CHK_16AS24,
+            IDC_CHK_CHECKFORMAT, IDC_CHK_WASAPICLOCK, IDC_CHK_16AS24, IDC_CHK_MATCHRATE, IDC_CHK_SUPPRESSDIAG,
             IDC_SLD_BUFFER, IDC_SLD_RING, IDC_SLD_START };
         static const int moveIds[] = { IDC_LBL_BUFFER, IDC_LBL_RING, IDC_LBL_START };
         auto add = [&](int id, bool stretch) {
@@ -207,6 +210,7 @@ private:
         s.check       = IsDlgButtonChecked(IDC_CHK_CHECKFORMAT) ? 1 : 0;
         s.clockWasapi = IsDlgButtonChecked(IDC_CHK_WASAPICLOCK) ? 1 : 0;
         s.as24        = IsDlgButtonChecked(IDC_CHK_16AS24) ? 1 : 0;
+        s.matchRate   = IsDlgButtonChecked(IDC_CHK_MATCHRATE) ? 1 : 0;
         s.periodMin   = IsDlgButtonChecked(IDC_PERIOD_MIN) ? 1 : 0;
         s.buf   = CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).GetPos() * kBufStepX100;
         s.ring  = CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).GetPos() * kRingStepX100;
@@ -223,6 +227,7 @@ private:
         CheckDlgButton(IDC_CHK_CHECKFORMAT, s.check);
         CheckDlgButton(IDC_CHK_WASAPICLOCK, s.clockWasapi);
         CheckDlgButton(IDC_CHK_16AS24, s.as24);
+        CheckDlgButton(IDC_CHK_MATCHRATE, s.matchRate);
         CheckRadioButton(IDC_PERIOD_DEFAULT, IDC_PERIOD_MIN, s.periodMin ? IDC_PERIOD_MIN : IDC_PERIOD_DEFAULT);
         CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).SetPos(s.buf / kBufStepX100);
         CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).SetPos(s.ring / kRingStepX100);

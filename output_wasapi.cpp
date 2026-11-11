@@ -34,6 +34,45 @@ static GUID endpoint_guid(const wchar_t* id) {
     return hasher_md5::get()->process_single_string(u).asGUID();
 }
 
+// Resolves the endpoint selected in foobar2000 (or the default one). Returns nullptr on success,
+// otherwise a short description of what failed.
+static const char* find_endpoint(const GUID& guid, CComPtr<IMMDevice>& out) {
+    out.Release();
+    CComPtr<IMMDeviceEnumerator> en;
+    if (FAILED(en.CoCreateInstance(__uuidof(MMDeviceEnumerator)))) return "Cannot create device enumerator";
+    if (guid == guid_default_device || guid == pfc::guid_null) {
+        if (FAILED(en->GetDefaultAudioEndpoint(eRender, eConsole, &out))) return "No default render device";
+        return nullptr;
+    }
+    CComPtr<IMMDeviceCollection> col;
+    if (FAILED(en->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &col))) return "Cannot enumerate devices";
+    UINT n = 0; col->GetCount(&n);
+    for (UINT i = 0; i < n; ++i) {
+        CComPtr<IMMDevice> d;
+        if (FAILED(col->Item(i, &d))) continue;
+        LPWSTR id = nullptr;
+        if (FAILED(d->GetId(&id))) continue;
+        const bool match = (endpoint_guid(id) == guid);
+        CoTaskMemFree(id);
+        if (match) { out = d; return nullptr; }
+    }
+    return "Selected WASAPI device not found";
+}
+
+// The sample rate configured for the device in Windows (Sound > Properties > Advanced > Default Format),
+// which is the format of the shared-mode mix. Returns 0 if it cannot be determined.
+static unsigned query_device_mix_rate(const GUID& deviceGuid) {
+    CComPtr<IMMDevice> dev;
+    if (find_endpoint(deviceGuid, dev)) return 0;
+    CComPtr<IAudioClient> client;
+    if (FAILED(dev->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&client))) return 0;
+    WAVEFORMATEX* mix = nullptr;
+    if (FAILED(client->GetMixFormat(&mix)) || !mix) return 0;
+    const unsigned rate = mix->nSamplesPerSec;
+    CoTaskMemFree(mix);
+    return (rate >= 8000 && rate <= 768000) ? rate : 0;
+}
+
 struct SampleFmt { int container; int valid; bool isFloat; };
 
 class output_wasapi : public output_impl {
@@ -112,6 +151,21 @@ public:
         if (!ok) throw exception_io_data(m_lastError.c_str());
 
         m_thread = CreateThread(nullptr, 0, &output_wasapi::thread_proc, this, 0, nullptr);
+    }
+
+    // Lets foobar2000 resample to the rate configured for this device in Windows. A nonzero return makes the
+    // core inject its resampler in front of this output; zero leaves the stream at its own rate.
+    unsigned get_forced_sample_rate() override {
+        if (!cfg_match_rate) return 0;
+        if (!m_deviceRateQueried) {
+            m_deviceRate = query_device_mix_rate(m_deviceGuid);
+            m_deviceRateQueried = true;
+            if (m_deviceRate)
+                FB2K_console_formatter() << "WASAPI: matching the device's configured sample rate, " << m_deviceRate << " Hz";
+            else
+                FB2K_console_formatter() << "WASAPI: could not read the device's configured sample rate, leaving it unchanged";
+        }
+        return m_deviceRate;
     }
 
     void write(const audio_chunk& chunk) {
@@ -481,6 +535,9 @@ private:
     uint32_t m_rate = 0, m_srcCh = 0, m_devCh = 0, m_mask = 0;
     bool m_expandMono = false, m_exclusive = false;
     pfc::string8 m_lastError;
+    ErrorLevel m_lastErrorLevel = ErrorLevel::Fatal;
+    unsigned m_deviceRate = 0;
+    bool m_deviceRateQueried = false;
 
     CComPtr<IMMDevice> m_dev;
     CComPtr<IAudioClient> m_client;
