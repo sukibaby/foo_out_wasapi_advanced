@@ -7,6 +7,7 @@ Enjoy audio!
 ## features
 
 - offers both Shared and Exclusive modes
+- configurable bit depth in `Devices` pane
 - capable of auto-detecting and matching your audio device's configured sample rate
   - uses the foobar2000 built-in resampler when enabled
 - helpful tooltips to explain every feature
