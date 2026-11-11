@@ -82,7 +82,8 @@ static unsigned query_device_mix_rate(const GUID &deviceGuid) {
         return 0;
     const unsigned rate = mix->nSamplesPerSec;
     CoTaskMemFree(mix);
-    return (rate >= 8000 && rate <= 768000) ? rate : 0;
+    return (rate >= 8000 && rate <= INT_MAX) ? rate : 0; // i think 768khz is the highest sample rate supported but don't want to implement
+                                                         // an arbitrary limit when this could increase in the future
 }
 
 // Errors that are always shown versus errors that may be hidden by "Suppress diagnostic error messages".
