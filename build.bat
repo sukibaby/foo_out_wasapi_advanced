@@ -5,7 +5,7 @@ rem ===========================================================================
 rem  build.bat [FOOBAR2000_SDK_ROOT] [WTL_ROOT]
 rem
 rem  Builds the SDK libraries and the component (Release | x64, MSVC v143
-rem  toolset) and packages foo_out_wasapi_custom.fb2k-component.
+rem  toolset) and packages foo_out_wasapi_advanced.fb2k-component.
 rem
 rem  The two paths can be passed as arguments or taken from the FB2K_SDK and
 rem  WTL_ROOT environment variables. Example:
@@ -14,7 +14,7 @@ rem ===========================================================================
 
 set "SCRIPT_DIR=%~dp0"
 set "SOLUTION=%SCRIPT_DIR%foo_out_wasapi_advanced.slnx"
-set "COMPONENT_NAME=foo_out_wasapi_custom"
+set "COMPONENT_NAME=foo_out_wasapi_advanced"
 set "TOOLSET=v143"
 
 if /I "%~1"=="/?" goto :usage

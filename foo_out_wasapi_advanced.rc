@@ -1,0 +1,40 @@
+#include <windows.h>
+#include <commctrl.h>
+#include "resource.h"
+
+// Base size 330 x 260 dialog units. The preferences code stretches the groups, checkboxes and sliders
+// to the width of the preferences pane (see OnSize in preferences.cpp).
+IDD_WASAPI_PREFS DIALOGEX 0, 0, 330, 260
+STYLE DS_SETFONT | WS_CHILD
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "WASAPI mode", IDC_GRP_MODE, 0, 0, 330, 30
+    CONTROL         "Shared", IDC_MODE_SHARED, "Button", BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP, 10, 13, 60, 10
+    CONTROL         "Exclusive", IDC_MODE_EXCLUSIVE, "Button", BS_AUTORADIOBUTTON, 80, 13, 60, 10
+
+    GROUPBOX        "Options", IDC_GRP_OPTIONS, 0, 34, 330, 94
+    CONTROL         "Enable volume control (use app volume control instead of Windows volume control)", IDC_CHK_APPVOLUME, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 46, 310, 10
+    CONTROL         "Gapless mode playback", IDC_CHK_GAPLESS, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 57, 310, 10
+    CONTROL         "Automatically disconnect when idle", IDC_CHK_AUTODISCONNECT, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 68, 310, 10
+    CONTROL         "Convert mono to stereo", IDC_CHK_MONO2STEREO, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 79, 310, 10
+    CONTROL         "Call IAudioClient::IsFormatSupported before IAudioClient::Initialize", IDC_CHK_CHECKFORMAT, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 90, 310, 10
+    CONTROL         "Use WASAPI as clock (unchecked: use system clock)", IDC_CHK_WASAPICLOCK, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 101, 310, 10
+    CONTROL         "Play 16 bit streams as 24 bit", IDC_CHK_16AS24, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 112, 310, 10
+
+    GROUPBOX        "Device period", IDC_GRP_PERIOD, 0, 132, 330, 28
+    CONTROL         "Default", IDC_PERIOD_DEFAULT, "Button", BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP, 10, 144, 60, 10
+    CONTROL         "Minimum", IDC_PERIOD_MIN, "Button", BS_AUTORADIOBUTTON, 80, 144, 60, 10
+
+    GROUPBOX        "Buffer", IDC_GRP_BUFFER, 0, 164, 330, 94
+    LTEXT           "Buffer size (multiplier of minimum/default period):", IDC_STATIC, 10, 176, 250, 8
+    CONTROL         "", IDC_SLD_BUFFER, "msctls_trackbar32", TBS_HORZ | TBS_AUTOTICKS | WS_TABSTOP, 10, 185, 260, 14
+    LTEXT           "7.0", IDC_LBL_BUFFER, 276, 188, 40, 8
+
+    LTEXT           "Ring buffer size (multiplier of shared buffer size):", IDC_STATIC, 10, 202, 250, 8
+    CONTROL         "", IDC_SLD_RING, "msctls_trackbar32", TBS_HORZ | TBS_AUTOTICKS | WS_TABSTOP, 10, 211, 260, 14
+    LTEXT           "5.00", IDC_LBL_RING, 276, 214, 40, 8
+
+    LTEXT           "Start playing (multiplier of shared buffer size):", IDC_STATIC, 10, 228, 250, 8
+    CONTROL         "", IDC_SLD_START, "msctls_trackbar32", TBS_HORZ | TBS_AUTOTICKS | WS_TABSTOP, 10, 237, 260, 14
+    LTEXT           "1.00", IDC_LBL_START, 276, 240, 40, 8
+END

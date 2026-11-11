@@ -11,9 +11,9 @@ for %%D in ("x64" "Win32") do (
     )
 )
 
-if exist "%SCRIPT_DIR%foo_out_wasapi_custom.fb2k-component" (
-    echo Removing "%SCRIPT_DIR%foo_out_wasapi_custom.fb2k-component"
-    del /q "%SCRIPT_DIR%foo_out_wasapi_custom.fb2k-component"
+if exist "%SCRIPT_DIR%foo_out_wasapi_advanced.fb2k-component" (
+    echo Removing "%SCRIPT_DIR%foo_out_wasapi_advanced.fb2k-component"
+    del /q "%SCRIPT_DIR%foo_out_wasapi_advanced.fb2k-component"
     if errorlevel 1 goto :failed
 )
 

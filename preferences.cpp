@@ -10,7 +10,7 @@ using namespace wcfg;
 
 DECLARE_COMPONENT_VERSION("WASAPI advanced output", "1.1.0",
     "Configurable WASAPI output component featuring shared/exclusive modes, buffer tuning, & more. github.com/sukibaby/foo_out_wasapi_advanced");
-VALIDATE_COMPONENT_FILENAME("foo_out_wasapi_custom.dll");
+VALIDATE_COMPONENT_FILENAME("foo_out_wasapi_advanced.dll");
 
 // {a3f0c2d8-91b4-4e7a-b6d5-0f2c8e41a7b9}
 static const GUID guid_prefs_page = { 0xa3f0c2d8, 0x91b4, 0x4e7a, { 0xb6, 0xd5, 0x0f, 0x2c, 0x8e, 0x41, 0xa7, 0xb9 } };
@@ -249,7 +249,7 @@ public:
         p->Create(parent);
         return p;
     }
-    const char* get_name() override { return "WASAPI (custom)"; }
+    const char* get_name() override { return "WASAPI (Advanced)"; }
     GUID get_guid() override { return guid_prefs_page; }
     GUID get_parent_guid() override { return guid_output; } // Playback > Output
 };

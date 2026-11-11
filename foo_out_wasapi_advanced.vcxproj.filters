@@ -17,6 +17,7 @@
   <ItemGroup>
     <ClInclude Include="config.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="resource.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="tooltips.h"><Filter>Header Files</Filter></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="config.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -24,6 +25,6 @@
     <ClCompile Include="preferences.cpp"><Filter>Source Files</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="foo_out_wasapi_custom.rc"><Filter>Resource Files</Filter></ResourceCompile>
+    <ResourceCompile Include="foo_out_wasapi_advanced.rc"><Filter>Resource Files</Filter></ResourceCompile>
   </ItemGroup>
 </Project>
