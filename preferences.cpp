@@ -32,20 +32,11 @@ Settings from_cfg() {
              (int)cfg_match_rate, (int)cfg_suppress_diag };
 }
 
+// "Reset page" - all values come from config.h (kDef...), so there is a single place to change defaults.
 Settings defaults() {
-    return {
-        mode_shared, // WASAPI mode
-        0,           // Enable volume control (forced on by exclusive mode)
-        1,           // Gapless mode playback
-        0,           // Disconnect when idle
-        0,           // Convert mono to stereo
-        1,           // Call IsFormatSupported before Initialize
-        1,           // WASAPI as clock (0 = system clock)
-        0,           // Play 16 bit streams as 24 bit
-        0,           // Device period (1 = minimum)
-        kBufferDef, kRingDef, kStartDef,
-        0,           // Automatically match device's configured sample rate
-        0 };         // Suppress non-critical (diagnostic) error messages
+    return { kDefMode, kDefAppVolume, kDefGapless, kDefAutoDisconnect, kDefMonoToStereo, kDefCheckFormat,
+             kDefClockWasapi, kDef16As24, kDefPeriodMin, kBufferDef, kRingDef, kStartDef,
+             kDefMatchRate, kDefSuppressDiag };
 }
 
 class CWasapiPrefs : public CDialogImpl<CWasapiPrefs>, public preferences_page_instance {

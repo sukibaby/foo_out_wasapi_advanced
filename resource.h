@@ -11,6 +11,8 @@
 #define IDC_CHK_CHECKFORMAT     1014
 #define IDC_CHK_WASAPICLOCK     1015
 #define IDC_CHK_16AS24          1016
+#define IDC_CHK_SUPPRESSDIAG    1017
+#define IDC_CHK_MATCHRATE       1018
 
 #define IDC_PERIOD_DEFAULT      1020
 #define IDC_PERIOD_MIN          1021
