@@ -21,7 +21,11 @@
 #define IDC_LBL_RING            1033
 #define IDC_SLD_START           1034
 #define IDC_LBL_START           1035
-#define IDC_BTN_DEFAULTS        1040
+
+#define IDC_GRP_MODE            1050
+#define IDC_GRP_OPTIONS         1051
+#define IDC_GRP_PERIOD          1052
+#define IDC_GRP_BUFFER          1053
 
 #ifndef IDC_STATIC
 #define IDC_STATIC              -1

@@ -3,6 +3,8 @@
 #include "config.h"
 #include "resource.h"
 #include "tooltips.h"
+#include <algorithm>
+#include <vector>
 
 using namespace wcfg;
 
@@ -70,11 +72,65 @@ public:
     BEGIN_MSG_MAP_EX(CWasapiPrefs)
         MSG_WM_INITDIALOG(OnInitDialog)
         MSG_WM_HSCROLL(OnHScroll)
+        MSG_WM_SIZE(OnSize)
         COMMAND_CODE_HANDLER_EX(BN_CLICKED, OnClicked)
     END_MSG_MAP()
 
 private:
     fb2k::CCoreDarkModeHooks m_dark;
+    CToolTipCtrl m_tip;
+
+    // Rectangle tool (on the dialog) that keeps the app-volume tooltip working while that checkbox is disabled.
+    static constexpr UINT_PTR kAppVolRectToolId = 0x7000 + IDC_CHK_APPVOLUME;
+
+    // Layout: the dialog is designed at a fixed base width. When the preferences pane is wider, the group
+    // boxes, checkboxes and sliders are stretched by the extra width and the value labels move right.
+    struct LayoutItem { int id; CRect rc; bool stretch; };
+    std::vector<LayoutItem> m_layout;
+    int m_baseWidth = 0;
+
+    void CaptureLayout() {
+        CRect client;
+        GetClientRect(&client);
+        m_baseWidth = client.Width();
+        static const int stretchIds[] = {
+            IDC_GRP_MODE, IDC_GRP_OPTIONS, IDC_GRP_PERIOD, IDC_GRP_BUFFER,
+            IDC_CHK_APPVOLUME, IDC_CHK_GAPLESS, IDC_CHK_AUTODISCONNECT, IDC_CHK_MONO2STEREO,
+            IDC_CHK_CHECKFORMAT, IDC_CHK_WASAPICLOCK, IDC_CHK_16AS24,
+            IDC_SLD_BUFFER, IDC_SLD_RING, IDC_SLD_START };
+        static const int moveIds[] = { IDC_LBL_BUFFER, IDC_LBL_RING, IDC_LBL_START };
+        auto add = [&](int id, bool stretch) {
+            CWindow w(GetDlgItem(id));
+            if (!w.IsWindow()) return;
+            CRect rc;
+            w.GetWindowRect(&rc);
+            ScreenToClient(&rc);
+            m_layout.push_back({ id, rc, stretch });
+        };
+        for (int id : stretchIds) add(id, true);
+        for (int id : moveIds) add(id, false);
+    }
+
+    void OnSize(UINT, CSize size) {
+        if (m_layout.empty()) return;
+        const int dx = (std::max)(0, (int)size.cx - m_baseWidth);
+        for (const LayoutItem& it : m_layout) {
+            CWindow w(GetDlgItem(it.id));
+            if (!w.IsWindow()) continue;
+            if (it.stretch)
+                w.SetWindowPos(nullptr, it.rc.left, it.rc.top, it.rc.Width() + dx, it.rc.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
+            else
+                w.SetWindowPos(nullptr, it.rc.left + dx, it.rc.top, 0, 0, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSIZE);
+        }
+        if (m_tip.IsWindow()) {
+            CWindow av(GetDlgItem(IDC_CHK_APPVOLUME));
+            CRect rc;
+            av.GetWindowRect(&rc);
+            ScreenToClient(&rc);
+            m_tip.SetToolRect(*this, kAppVolRectToolId, &rc);
+        }
+        Invalidate();
+    }
 
     BOOL OnInitDialog(CWindow, LPARAM) {
         CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).SetRange(kBufferMin / kBufStepX100, kBufferMax / kBufStepX100);
@@ -83,6 +139,7 @@ private:
         CTrackBarCtrl(GetDlgItem(IDC_SLD_BUFFER)).SetTicFreq(10);
         CTrackBarCtrl(GetDlgItem(IDC_SLD_RING)).SetTicFreq(100);
         CTrackBarCtrl(GetDlgItem(IDC_SLD_START)).SetTicFreq(100);
+        CaptureLayout();
         write_ui(from_cfg());
         InitTooltips();
         m_dark.AddDialogWithControls(*this);
@@ -122,7 +179,6 @@ private:
     }
 
     void OnClicked(UINT, int id, CWindow) {
-        if (id == IDC_BTN_DEFAULTS) write_ui(defaults());
         if (id == IDC_MODE_SHARED || id == IDC_MODE_EXCLUSIVE) update_app_volume_control();
         m_cb->on_state_changed();
     }
