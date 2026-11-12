@@ -6,6 +6,7 @@
     <Fb2kSdkRoot Condition="'$(Fb2kSdkRoot)' == '' And '$(FB2K_SDK)' != ''">$(FB2K_SDK)</Fb2kSdkRoot>
     <WtlRoot Condition="'$(WtlRoot)' == '' And '$(WTL_ROOT)' != ''">$(WTL_ROOT)</WtlRoot>
     <AtlInclude Condition="'$(AtlInclude)' == '' And '$(ATL_INCLUDE)' != ''">$(ATL_INCLUDE)</AtlInclude>
+    <AtlLibraryDir Condition="'$(AtlLibraryDir)' == '' And '$(ATL_LIBRARY_DIR)' != ''">$(ATL_LIBRARY_DIR)</AtlLibraryDir>
   </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|ARM64">
@@ -133,7 +134,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalLibraryDirectories>$(Fb2kSdkRoot)\pfc\$(Platform)\$(Configuration);$(Fb2kSdkRoot)\foobar2000\SDK\$(Platform)\$(Configuration);$(Fb2kSdkRoot)\foobar2000\foobar2000_component_client\$(Platform)\$(Configuration);$(Fb2kSdkRoot)\foobar2000\helpers\$(Platform)\$(Configuration);$(Fb2kSdkRoot)\foobar2000\shared;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(Fb2kSdkRoot)\pfc\$(Platform)\$(Configuration);$(Fb2kSdkRoot)\foobar2000\SDK\$(Platform)\$(Configuration);$(Fb2kSdkRoot)\foobar2000\foobar2000_component_client\$(Platform)\$(Configuration);$(Fb2kSdkRoot)\foobar2000\helpers\$(Platform)\$(Configuration);$(Fb2kSdkRoot)\foobar2000\shared;$(AtlLibraryDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>pfc.lib;foobar2000_SDK.lib;foobar2000_component_client.lib;foobar2000_sdk_helpers.lib;shared-$(Platform).lib;avrt.lib;ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

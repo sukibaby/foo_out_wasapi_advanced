@@ -8,8 +8,10 @@
   <PropertyGroup>
     <Fb2kSdkRoot>C:\path\to\foobar-SDK-2026-10-01</Fb2kSdkRoot>
     <WtlRoot>C:\path\to\WTL10_01_Release</WtlRoot>
-    <!-- Folder containing atlbase.h, e.g. ...\VC\Tools\MSVC\14.xx.xxxxx\atlmfc\include. Needed when the
-         selected toolset has no ATL of its own (build.bat finds and passes this automatically). -->
+    <!-- For IDE builds when the selected toolset has no ATL of its own. -->
     <AtlInclude>C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\atlmfc\include</AtlInclude>
+    <!-- Folder containing atls.lib for the selected platform. For ARM64EC, this may be
+         ...\atlmfc\lib\spectre\arm64; build-all.bat finds and passes the appropriate folder. -->
+    <AtlLibraryDir>C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\atlmfc\lib\arm64</AtlLibraryDir>
   </PropertyGroup>
 </Project>
