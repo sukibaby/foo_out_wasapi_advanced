@@ -6,6 +6,7 @@ Enjoy audio!
 
 ## features
 
+- multiplatform (x86, x64 & ARM)
 - offers both Shared and Exclusive modes
 - configurable bit depth in `Devices` pane
 - capable of auto-detecting and matching your audio device's configured sample rate
