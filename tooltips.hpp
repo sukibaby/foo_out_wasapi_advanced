@@ -34,7 +34,7 @@ inline constexpr TipEntry kTooltips[] = {
                           L"opening it. Some drivers answer incorrectly, so this isn't always desired."},
 
     {IDC_CHK_WASAPICLOCK, L"Determines whether the audio device or Windows' built-in high resolution timer is used for "
-                          L"timing/clocking."},
+                          L"timing/clocking. Not the same thing as Event vs. Push mode."},
 
     {IDC_CHK_16AS24, L"Force 16-bit audio to be output as 24-bit if enabled. The sound itself is unchanged."},
 
