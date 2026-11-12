@@ -4,3 +4,5 @@
 foo_out_wasapi_advanced.vcxproj.user
 *.fb2k-component
 *.zip
+/ARM64EC
+/Win32
