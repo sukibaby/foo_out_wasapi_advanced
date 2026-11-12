@@ -24,8 +24,8 @@ inline constexpr TipEntry kTooltips[] = {
     {IDC_CHK_GAPLESS, L"Keeps already-queued audio when the next track starts, so there are no gaps between tracks. "
                       L"If disabled, the output is flushed at every track change."},
 
-    {IDC_CHK_AUTODISCONNECT, L"If this is enabled, other programs can take control of the audio device if foobar2000 isn't"
-                             L"actively playing audio. Disable this if you want foobar2000 to lock the audio device even"
+    {IDC_CHK_AUTODISCONNECT, L"If this is enabled, other programs can take control of the audio device if foobar2000 isn't "
+                             L"actively playing audio. Disable this if you want foobar2000 to lock the audio device even "
                              L"when nothing is being played."},
 
     {IDC_CHK_MONO2STEREO, L"Upmixes mono to stereo from within foobar2000."},
@@ -40,8 +40,8 @@ inline constexpr TipEntry kTooltips[] = {
 
     {IDC_CHK_MATCHRATE, L"If enabled, foobar2000's built-in resampler will be used to convert all audio to the sample rate "
                         L"set for this device in Windows (Sound settings > Device Properties > Advanced > Default Format) "
-                        L"Avoids Windows' own resampling in shared mode and rate switching in exclusive mode"
-                        L"mode. If the rate cannot be read, audio is left unchanged. Takes effect the next time playback starts. "
+                        L"Avoids Windows' own resampling in shared mode and rate switching in exclusive mode. "
+                        L"If the rate cannot be read, audio is left unchanged. Takes effect the next time playback starts. "
                         L"Don't enable this if you wish to use a separate resampler (for example, a resampling DSP plugin)."},
 
     {IDC_CHK_SUPPRESSDIAG, L"If enabled, minor errors will be reported in a pop-up. Serious errors, "
